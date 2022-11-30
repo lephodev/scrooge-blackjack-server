@@ -105,11 +105,15 @@ export const playerTurnTimer = async (io, data) => {
         const upRoom = await roomModel.findOne({
           $and: [
             { tableId },
-            { players: { $elemMatch: { id: currentPlayer?.id } } },
+            {
+              players: {
+                $elemMatch: { id: convertMongoId(currentPlayer?.id) },
+              },
+            },
           ],
         });
         currentPlayer = upRoom?.players.find(
-          (el) => el.id === currentPlayer.id
+          (el) => el.id.toString() === currentPlayer.id.toString()
         );
         if (currentPlayer) {
           if (
@@ -132,7 +136,11 @@ export const playerTurnTimer = async (io, data) => {
               {
                 $and: [
                   { tableId },
-                  { players: { $elemMatch: { id: currentPlayer.id } } },
+                  {
+                    players: {
+                      $elemMatch: { id: convertMongoId(currentPlayer.id) },
+                    },
+                  },
                 ],
               },
               {
