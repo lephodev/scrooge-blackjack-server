@@ -1,0 +1,12 @@
+{
+  "type": "service_account",
+  "project_id": "mycool-net-app",
+  "private_key_id": "ffa2b30a57a5fc0d2fec34d142fa5ba4070a7003",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEuwIBADANBgkqhkiG9w0BAQEFAASCBKUwggShAgEAAoIBAQCer/1GCLTbNnmc\nLqj1DVdvoannc+HyTqDI50ashOsdlpfyiDVt82ItCt4NbhUDi9QHuMge2iAkETOO\n5GQkW4krhIg7LZ2dC+mzSKKa4VOt1Sen1kyckBtXoYoCXNq9uviZ1lyzC2YqD9xP\nSgVtNKFNh2ohTHGwm4/eMJclwyFCo4lI6xWRjOg9KpA5VNZc+Ycf3A73vlCjea61\nvGGdmUIpDha8KtPHmL0so8T6RkLB7EW0ucmWDI00eB20j1O2k7AimgKNzFoCRlck\ngKi3anL455//bZdXcLLs/10zdojeJ5NK6ixOVAmmhezYV9YrmZFY0aCAG7YJEfSx\n0T0atGxjAgMBAAECggEAFGcSkdq/DMDxcXwVphgr30LyWjtYgskgPA8cU5nCtFWv\nPfQhpnwt6cD6xtBErGWMgoemrJd6nW3cFVRWbyRDu9AjnImODmnrMhgLLA2qLsX3\n/h4mpdSTZ2NyH+v6BdM7G7sSGm/DQseHmbwt0W98Xmr5jBl3iUT0V5V4wYFX+T4N\n+g0CDdkFlwPG76OU+D7jQy5QIZ66DmXFqolHbRxGojEjo0GtHTV4vEl0PlkHgFr9\nWXybcYlCJ8D3Z6L1B7B4+cTbI/tiRI/DFwvlb8gsAGQwJ/9ploVMvs4yl7q+o+G1\nlcnrGk0/iXFYlP2eIyQX/+WSjqspSHOcBwxbT0PrxQKBgQDREzo2NB+T0+NQqGcS\nsuQ45tGr1zuhtgwDoVnvH6UhzfOCqwxLNO5YciYmj+8sySxvXRMSItFLwGCwkOXi\nzECuPX6zEkPyeaZXW/q+t9nsQD+WrdDB/1Sz2X7PStxcG6ZIE1cD5+KYdDvDdCrs\nNG9eHOawEWQ2V8zJ7f41H5nx9QKBgQDCTab8NigXkjI4f/muQsE9VB5NjuF+Y592\nMjxw6RPwRy4wle2AaKkWuJdV+069lH7ex2+3zib5qVi/NPVPEiY5nMiQYzTjWayp\n5TlVMwHhnvkg3SnCujWw6+gXugHHprXj7hTuSziBygIyeayozezMwJd+Gr2Yygyy\n0aBLEdt19wKBgD16YOilZQ+sA7CpBD4MWm2c+dSE4qUHifrbTD2zWXRaQhuPPnsy\n4k8hqbQ3KMZLlYRdowj3MgILXKMuyFprYy2ZKZNwcIhxWwdfJZlFKJB+x/P/wl35\nPafw8Yf05F01SCzzeufMHOZlb1lm5GQ2evT6nJ7zTjtoj/BkyhZG55atAn8MJM5K\n9ReMYZbB8T2ppoJtUtSSBFwTiiZtPLaKWAbm/YvlfXlajTAEO4U52nsRXjaPtedF\nlZzZ/buON8EdMAUzlJj0bT7g9rnT5H+w039KmqT3aNszUHAKnrPix71UvRahKEAm\npIzjj7yTawdfhX9HTMIrH4C6C+a/Rlq+Vl9hAoGBAJx/0kqrL8itlQMEMKDOE0go\nWaemlAhnBo+WQejSUdBUsQ6bAXv27H8cBihdfbu50dcWu0HnzzFSGmL68+D87MzH\nwkZLzZfsAuGUx8pq5/JBDxd4KtlE4wmr9R1cj6XpryB6KGytW4AEgunVluhBgYgU\nOEGvRRTUXoNVxzHr54Sk\n-----END PRIVATE KEY-----\n",
+  "client_email": "firebase-adminsdk-a3lsp@mycool-net-app.iam.gserviceaccount.com",
+  "client_id": "106002917858883771988",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-a3lsp%40mycool-net-app.iam.gserviceaccount.com"
+}
