@@ -25,7 +25,8 @@ const convertMongoId = (id) => mongoose.Types.ObjectId(id);
 
 export const createNewGame = async (io, socket, data) => {
   try {
-    const {
+    console.log('IN CREATE NEW TABLE');
+    let {
       nickname,
       photoURI,
       stats,
@@ -35,7 +36,7 @@ export const createNewGame = async (io, socket, data) => {
       amount,
       meetingToken,
     } = data.user;
-    const {
+    let {
       tableId,
       alloWatchers,
       media,
@@ -55,7 +56,7 @@ export const createNewGame = async (io, socket, data) => {
           cards: [],
           coinsBeforeStart: deduct,
           avatar: photoURI,
-          id: userid,
+          id: convertMongoId(userid),
           betAmount: 0,
           isPlaying: false,
           turn: false,
@@ -96,6 +97,7 @@ export const createNewGame = async (io, socket, data) => {
       },
     });
     if (newRoom) {
+      console.log('NEW ROOM CREATED');
       tableId = newRoom.tableId;
       socket.join(tableId);
       let lastSocketData = io.room;
@@ -105,6 +107,7 @@ export const createNewGame = async (io, socket, data) => {
           return { room: el, pretimer: false };
         }
       );
+      console.log({ rooms: io.room });
       socket.customRoom = tableId;
       io.in(tableId).emit('gameCreated', {
         game: newRoom,
@@ -132,7 +135,7 @@ export const joinGame = async (io, socket, data) => {
     } = data.user;
     const { tableId } = data.table;
     const room = await roomModel.findOne({ tableId });
-    if (room.players.find((el) => el.id === userid)) {
+    if (room.players.find((el) => el.id.toString() === userid?.toString())) {
       return io.in(roomid).emit('updateRoom', room);
     }
     if (room.players.length >= 7) {
@@ -153,7 +156,7 @@ export const joinGame = async (io, socket, data) => {
       cards: [],
       coinsBeforeStart: deduct,
       avatar: photoURI,
-      id: userid,
+      id: convertMongoId(userid),
       betAmount: 0,
       isPlaying: false,
       turn: false,
@@ -213,7 +216,7 @@ export const rejoinGame = async (io, socket, data) => {
       const game = await roomModel.findOne({
         $and: [
           { tableId: roomId },
-          { players: { $elemMatch: { id: userId } } },
+          { players: { $elemMatch: { id: convertMongoId(userId) } } },
         ],
       });
       if (game) {
@@ -231,17 +234,23 @@ export const rejoinGame = async (io, socket, data) => {
 export const bet = async (io, socket, data) => {
   try {
     // check game is exist and user is in the game
-    const { roomId, userId, betAmount } = data;
+    let { roomId, userId, betAmount } = data;
+    userId = convertMongoId(userId);
+    console.log({ roomId, userId, betAmount });
     if (roomId && userId) {
       const game = await roomModel.findOne({
         $and: [
           { tableId: roomId },
-          { players: { $elemMatch: { id: userId } } },
+          { players: { $elemMatch: { id: convertMongoId(userId) } } },
           { gamestart: false },
         ],
       });
+      console.log({ game });
       if (!game) return socket.emit('gameAlreadyStarted');
-      if (game.players.find((el) => el.id === userId).wallet >= betAmount) {
+      if (
+        game.players.find((el) => el.id.toString() === userId.toString())
+          .wallet >= betAmount
+      ) {
         const bet = await roomModel.updateOne(
           {
             $and: [
@@ -256,6 +265,7 @@ export const bet = async (io, socket, data) => {
             },
           }
         );
+        console.log({ bet });
         if (bet.matchedCount === 1) {
           const latestBet = await roomModel
             .findOne({
@@ -265,13 +275,16 @@ export const bet = async (io, socket, data) => {
               ],
             })
             .select('-deck');
+          console.log({ latestBet });
           io.in(roomId).emit('updateRoom', latestBet);
         } else {
+          console.log('Action error');
           socket.emit('actionError', {
             msg: 'Unable to bet',
           });
         }
       } else {
+        console.log('Low balance issue');
         socket.emit('lowBalance');
       }
     }
@@ -288,7 +301,7 @@ export const clearBet = async (io, socket, data) => {
       const room = await roomModel.findOne({
         $and: [
           { tableId: roomId },
-          { players: { $elemMatch: { id: userId } } },
+          { players: { $elemMatch: { id: convertMongoId(userId) } } },
         ],
       });
       if (room.gamestart) {
@@ -300,16 +313,18 @@ export const clearBet = async (io, socket, data) => {
         {
           $and: [
             { tableId: roomId },
-            { players: { $elemMatch: { id: userId } } },
+            { players: { $elemMatch: { id: convertMongoId(userId) } } },
             { isGameStarted: false },
           ],
         },
         {
           $inc: {
-            'players.$.betAmount': -room.players.find((el) => el.id === userId)
-              .betAmount,
-            'players.$.wallet': room.players.find((el) => el.id === userId)
-              .betAmount,
+            'players.$.betAmount': -room.players.find(
+              (el) => el.id.toString() === userId.toString()
+            ).betAmount,
+            'players.$.wallet': room.players.find(
+              (el) => el.id.toString() === userId.toString()
+            ).betAmount,
           },
         }
       );
@@ -317,7 +332,7 @@ export const clearBet = async (io, socket, data) => {
         const room = await roomModel.findOne({
           $and: [
             { tableId: roomId },
-            { players: { $elemMatch: { id: userId } } },
+            { players: { $elemMatch: { id: convertMongoId(userId) } } },
           ],
         });
         io.in(roomId).emit('updateRoom', room);
@@ -338,7 +353,10 @@ export const exitRoom = async (io, socket, data) => {
     let leaveReq = [];
     let roomdata = await roomModel
       .findOne({
-        $and: [{ tableId }, { players: { $elemMatch: { id: userId } } }],
+        $and: [
+          { tableId },
+          { players: { $elemMatch: { id: convertMongoId(userId) } } },
+        ],
       })
       .lean();
     if (roomdata && roomdata.players.length <= 1) {
@@ -352,11 +370,15 @@ export const exitRoom = async (io, socket, data) => {
         });
       }
     } else if (roomdata && roomdata.players.length) {
-      let newAdmin = roomdata.players.find((el) => el.id !== userId);
-      let leaveUser = roomdata.players.find((el) => el.id === userId);
+      let newAdmin = roomdata.players.find(
+        (el) => el.id.toString() !== userId.toString()
+      );
+      let leaveUser = roomdata.players.find(
+        (el) => el.id.toString() === userId.toString()
+      );
       leaveReq = [...roomdata.leaveReq];
       leaveReq.push(leaveUser.id);
-      if (roomdata.hostId === userId)
+      if (roomdata.hostId.toString() === userId.toString())
         if (res) {
           // await changeAdmin(newAdmin.id, tableId, roomdata.gameType);
           // const res = await leaveApiCall(
@@ -372,7 +394,9 @@ export const exitRoom = async (io, socket, data) => {
             },
             {
               hostId:
-                roomdata.hostId === userId ? newAdmin.id : roomdata.hostId,
+                roomdata.hostId.toString() === userId.toString()
+                  ? newAdmin.id
+                  : roomdata.hostId,
               leaveReq,
               $pull: {
                 players: userId,
@@ -398,7 +422,9 @@ export const exitRoom = async (io, socket, data) => {
         }
     } else {
       let roomdata = await roomModel.findOne({ tableId }).lean();
-      if (!roomdata?.players?.find((el) => el.id === userId)) {
+      if (
+        !roomdata?.players?.find((el) => el.id.toString() === userId.toString())
+      ) {
         // updateInGameStatus(userId);
         socket.emit('exitSuccess');
       }
@@ -444,7 +470,8 @@ export const startPreGameTimer = async (io, socket, data) => {
 
 export const confirmBet = async (io, socket, data) => {
   try {
-    const { tableId, userId } = data;
+    let { tableId, userId } = data;
+    userId = convertMongoId(userId);
     const room = await roomModel.findOne({
       $and: [
         { tableId },
@@ -453,7 +480,9 @@ export const confirmBet = async (io, socket, data) => {
       ],
     });
     if (!room) return socket.emit('gameAlreadyStarted');
-    const player = room.players.find((el) => el.id === userId);
+    const player = room.players.find(
+      (el) => el.id.toString() === userId.toString()
+    );
     if (player && room) {
       await roomModel.updateOne(
         { $and: [{ tableId }, { players: { $elemMatch: { id: userId } } }] },
@@ -463,7 +492,7 @@ export const confirmBet = async (io, socket, data) => {
       );
       if (!io.room.find((el) => el.room === tableId)?.pretimer) {
         let dd = io.room.findIndex((el) => el.room === tableId);
-        console.log('dddd =>', io.room, tableId);
+        console.log('dddd =>', { room: io.room, tableId, dd });
         if (dd !== -1) {
           io.room[dd].pretimer = true;
           await roomModel.updateOne({ tableId }, { preTimer: true });
@@ -607,8 +636,12 @@ export const checkForTable = async (data, socket, io) => {
         return socket.emit('gameFinished', 'Game Already Finished.');
       }
       if (
-        isRoomExist.players.find((ele) => ele.id === user.userid) ||
-        isRoomExist.watchers.find((ele) => ele.id === user.userid)
+        isRoomExist.players.find(
+          (ele) => ele.id.toString() === user.userid.toString()
+        ) ||
+        isRoomExist.watchers.find(
+          (ele) => ele.id.toString() === user.userid.toString()
+        )
       ) {
         socket.join(room.roomid);
         io.in(room.roomid).emit('updateRoom', isRoomExist);
@@ -621,11 +654,12 @@ export const checkForTable = async (data, socket, io) => {
             return socket.emit('slotFull');
           } else if (isRoomExist.players.length < 7) {
             user.isAdmin = false;
-            const deduct = await deductAmount(
-              room.table.buyIn,
-              user.userid,
-              gameType
-            );
+            // const deduct = await deductAmount(
+            //   room.table.buyIn,
+            //   user.userid,
+            //   gameType
+            // );
+            const deduct = 10000;
             if (deduct) {
               await joinGame(io, socket, {
                 user: { ...user, deduct, hands, amount, meetingToken },
@@ -645,8 +679,12 @@ export const checkForTable = async (data, socket, io) => {
           if (isRoomExist.players.length >= 7 && !room.table.alloWatchers) {
             return socket.emit('slotFull');
           } else if (
-            room.invPlayers.find((ele) => ele === user.userid) &&
-            !room.players.find((ele) => ele === user.userid)
+            room.invPlayers.find(
+              (ele) => ele.toString() === user.userid.toString()
+            ) &&
+            !room.players.find(
+              (ele) => ele.toString() === user.userid.toString()
+            )
           ) {
             user.isAdmin = false;
             const deduct = await deductAmount(
@@ -682,15 +720,16 @@ export const checkForTable = async (data, socket, io) => {
         return socket.emit('gameFinished', 'Game Already Finished.');
       }
       if (
-        room.table.admin === user.userid ||
+        room.table.admin.toString() === user.userid.toString() ||
         room.table.status === 'scheduled'
       ) {
-        user.isAdmin = room.table.admin === user.userid;
-        const deduct = await deductAmount(
-          room.table.buyIn,
-          user.userid,
-          gameType
-        );
+        user.isAdmin = room.table.admin.toString() === user.userid.toString();
+        // const deduct = await deductAmount(
+        //   room.table.buyIn,
+        //   user.userid,
+        //   gameType
+        // );
+        const deduct = 10000;
         if (deduct) {
           if (room.table.media !== 'no-media') {
             const API_KEY = process.env.VIDEOSDK_API_KEY;
@@ -836,7 +875,9 @@ export const addBuyCoins = async (io, socket, data) => {
   try {
     const { userId, tableId, amt, usd, payMethod, cardNr } = data;
     const room = await roomModel.findOne({ tableId });
-    let player = room.players.find((el) => el.id === userId);
+    let player = room.players.find(
+      (el) => el.id.toString() === userId.toString()
+    );
     if (player) {
       player.hands.push({
         action: 'buy-coins',
@@ -849,7 +890,12 @@ export const addBuyCoins = async (io, socket, data) => {
       });
       player.wallet = player.wallet + amt;
       await roomModel.updateOne(
-        { $and: [{ tableId }, { players: { $elemMatch: { id: userId } } }] },
+        {
+          $and: [
+            { tableId },
+            { players: { $elemMatch: { id: convertMongoId(userId) } } },
+          ],
+        },
         {
           'players.$.hands': player.hands,
           'players.$.wallet': player.wallet,
@@ -891,28 +937,28 @@ export const InvitePlayers = async (io, socket, data) => {
       { new: true }
     );
     if (updateRoom) {
-      const res = await axios.get(
-        'https://invite2-lobby-t3e66zpola-ue.a.run.app/',
-        {
-          params: {
-            usid: data.userId,
-            game: data.gameType,
-            tabId: data.tableId,
-            toInvite: newInvPlayers.join(','),
-          },
-          headers: {
-            'Content-Type': 'application/json',
-            origin: socket.handshake.headers.origin,
-          },
-        }
-      );
-      if (res.data.error === 'no error') {
-        socket.emit('invitationSend', {
-          room: updateRoom,
-        });
-      } else {
-        socket.emit('noInvitationSend');
-      }
+      // const res = await axios.get(
+      //   'https://invite2-lobby-t3e66zpola-ue.a.run.app/',
+      //   {
+      //     params: {
+      //       usid: data.userId,
+      //       game: data.gameType,
+      //       tabId: data.tableId,
+      //       toInvite: newInvPlayers.join(','),
+      //     },
+      //     headers: {
+      //       'Content-Type': 'application/json',
+      //       origin: socket.handshake.headers.origin,
+      //     },
+      //   }
+      // );
+      // if (res.data.error === 'no error') {
+      socket.emit('invitationSend', {
+        room: updateRoom,
+      });
+      // } else {
+      //   socket.emit('noInvitationSend');
+      // }
     }
   } catch (err) {
     console.log('Error in InvitePlayer Function =>', err.message);
@@ -935,7 +981,9 @@ export const finishHandApiCall = async (room) => {
         coinsBeforeJoin: item.coinsBeforeStart,
         gameLeaveAt: new Date(),
         gameJoinedAt: item.gameJoinedAt,
-        isWatcher: room.watchers.find((ele) => ele.userid === uid)
+        isWatcher: room.watchers.find(
+          (ele) => ele.userid.toString() === uid.toString()
+        )
           ? true
           : false,
       });
@@ -1003,7 +1051,10 @@ export const leaveApiCall = async (room, userId) => {
     }
     let allUsers = player.concat(room.watchers);
     console.log('users =>', allUsers, userId);
-    if (userId) allUsers = allUsers.filter((ele) => ele.id === userId);
+    if (userId)
+      allUsers = allUsers.filter(
+        (ele) => ele.id.toString() === userId.toString()
+      );
     let users = [];
 
     allUsers.forEach((item) => {
@@ -1045,27 +1096,27 @@ export const leaveApiCall = async (room, userId) => {
     };
     console.log('payload =>', JSON.stringify(payload));
 
-    const res = await axios.post(url, payload, {
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-    console.log('Res =>', res.data, url);
-    if (res.data.error === 'no error') {
-      if (userId) {
-        await roomModel.updateOne(
-          { _id: room._id, 'players.id': userId },
-          {
-            $pull: {
-              players: { id: userId },
-            },
-          }
-        );
+    // const res = await axios.post(url, payload, {
+    //   headers: {
+    //     'Content-Type': 'application/json',
+    //   },
+    // });
+    // console.log('Res =>', res.data, url);
+    // if (res.data.error === 'no error') {
+    //   if (userId) {
+    await roomModel.updateOne(
+      { _id: room._id, 'players.id': userId },
+      {
+        $pull: {
+          players: { id: userId },
+        },
       }
-      return true;
-    } else {
-      return false;
-    }
+    );
+    // }
+    return true;
+    // } else {
+    //   return false;
+    // }
   } catch (err) {
     console.log('Error in Leave APi call =>', err.message);
     return false;
@@ -1076,14 +1127,14 @@ export const checkRoom = async (data, socket, io) => {
   try {
     const { tableId, userId, gameType } = data;
     const userData = await userModel.findOne({ _id: convertMongoId(userId) });
-
+    console.log({ userData });
     if (!userData) {
       // Check user not found and redirect back
       return;
     }
 
     const roomData = await roomModel.findOne({ tableId });
-
+    console.log({ roomData });
     const payload = {
       user: {
         nickname: userData.username,
@@ -1092,7 +1143,7 @@ export const checkRoom = async (data, socket, io) => {
         userid: convertMongoId(userId),
         deduct: 10000,
         hands: [],
-        amount: 0,
+        amount: 1000,
         meetingToken: '',
       },
       table: {
@@ -1111,7 +1162,9 @@ export const checkRoom = async (data, socket, io) => {
       },
     };
     if (roomData) {
-      if (roomData.players.find((ele) => ele.id === userId)) {
+      if (
+        roomData.players.find((ele) => ele.id.toString() === userId.toString())
+      ) {
         socket.join(tableId);
         io.in(tableId).emit('updateRoom', roomData);
         return;
