@@ -359,6 +359,7 @@ export const exitRoom = async (io, socket, data) => {
         ],
       })
       .lean();
+    console.log({ roomdata });
     if (roomdata && roomdata.players.length <= 1) {
       const res = await leaveApiCall(roomdata);
       if (res) {
