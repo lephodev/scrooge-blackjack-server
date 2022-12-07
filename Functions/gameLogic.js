@@ -352,6 +352,7 @@ export const dealerTurn = async (io, data) => {
 export const hitAction = async (io, socket, data) => {
   try {
     let { tableId, userId } = data;
+    console.log('HIT SECTION ', { tableId });
     userId = convertMongoId(userId);
     const room = await roomModel.findOne({
       $and: [
@@ -359,6 +360,7 @@ export const hitAction = async (io, socket, data) => {
         { players: { $elemMatch: { $and: [{ id: userId }, { turn: true }] } } },
       ],
     });
+    console.log({ room });
     if (room) {
       let player = room.players.find(
         (el) => el.id.toString() === userId.toString()
@@ -373,6 +375,7 @@ export const hitAction = async (io, socket, data) => {
       const r = await roomModel.findOne({ tableId: room.tableId });
       io.in(tableId).emit('updateRoom', r);
     }
+    console.log('ID HERE ', room);
     const r = await roomModel.findOne({ tableId: room.tableId });
     let p = r.players.find((el) => el.id.toString() === userId.toString());
     return p;
