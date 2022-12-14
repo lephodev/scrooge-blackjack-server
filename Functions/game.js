@@ -349,6 +349,7 @@ export const clearBet = async (io, socket, data) => {
 
 export const exitRoom = async (io, socket, data) => {
   try {
+    console.log('IN EXIT ROOM');
     const { tableId, userId } = data;
     let leaveReq = [];
     let roomdata = await roomModel
@@ -361,6 +362,7 @@ export const exitRoom = async (io, socket, data) => {
       .lean();
     console.log({ roomdata });
     if (roomdata && roomdata.players.length <= 1) {
+      console.log('IF ! 1');
       const res = await leaveApiCall(roomdata);
       if (res) {
         await roomModel.deleteOne({
@@ -371,57 +373,65 @@ export const exitRoom = async (io, socket, data) => {
         });
       }
     } else if (roomdata && roomdata.players.length) {
+      console.log('IN EXIT ROOM 2');
       let newAdmin = roomdata.players.find(
         (el) => el.id.toString() !== userId.toString()
       );
       let leaveUser = roomdata.players.find(
         (el) => el.id.toString() === userId.toString()
       );
+      console.log('IN EXIT ROOM 3', { newAdmin, leaveUser });
       leaveReq = [...roomdata.leaveReq];
       leaveReq.push(leaveUser.id);
-      if (roomdata.hostId.toString() === userId.toString())
-        if (res) {
-          // await changeAdmin(newAdmin.id, tableId, roomdata.gameType);
-          // const res = await leaveApiCall(
-          //   {
-          //     ...roomdata,
-          //     hostId: roomdata.hostId === userId ? newAdmin.id : roomdata.hostId,
-          //   },
-          //   leaveUser.id
-          // );
-          const leave = await roomModel.updateOne(
-            {
-              tableId,
+      console.log({
+        condition: roomdata.hostId.toString() === userId.toString(),
+      });
+      if (roomdata.hostId.toString() === userId.toString()) {
+        // if (res) {
+        // await changeAdmin(newAdmin.id, tableId, roomdata.gameType);
+        // const res = await leaveApiCall(
+        //   {
+        //     ...roomdata,
+        //     hostId: roomdata.hostId === userId ? newAdmin.id : roomdata.hostId,
+        //   },
+        //   leaveUser.id
+        // );
+        const leave = await roomModel.updateOne(
+          {
+            tableId,
+          },
+          {
+            hostId:
+              roomdata.hostId.toString() === userId.toString()
+                ? newAdmin.id
+                : roomdata.hostId,
+            leaveReq,
+            $pull: {
+              players: userId,
             },
-            {
-              hostId:
-                roomdata.hostId.toString() === userId.toString()
-                  ? newAdmin.id
-                  : roomdata.hostId,
-              leaveReq,
-              $pull: {
-                players: userId,
-              },
-            }
-          );
-          if (leave.matchedCount === 1) {
-            const room = await roomModel.findOne({
-              $and: [{ tableId }],
+          }
+        );
+        if (leave.matchedCount === 1) {
+          const room = await roomModel.findOne({
+            $and: [{ tableId }],
+          });
+          console.log('HERE WORKD');
+          socket.emit('exitSuccess');
+          if (room && room.players.length) {
+            io.in(tableId).emit('updateRoom', room);
+          } else {
+            await roomModel.deleteOne({
+              tableId,
             });
-            socket.emit('exitSuccess');
-            if (room && room.players.length) {
-              io.in(tableId).emit('updateRoom', room);
-            } else {
-              await roomModel.deleteOne({
-                tableId,
-              });
-              io.in(tableId).emit('gameFinished', {
-                msg: 'All player left, game finished',
-              });
-            }
+            io.in(tableId).emit('gameFinished', {
+              msg: 'All player left, game finished',
+            });
           }
         }
+        // }
+      }
     } else {
+      console.log('FINAL ELSE');
       let roomdata = await roomModel.findOne({ tableId }).lean();
       if (
         !roomdata?.players?.find((el) => el.id.toString() === userId.toString())
