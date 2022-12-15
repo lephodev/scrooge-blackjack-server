@@ -75,6 +75,9 @@ const userSchema = mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    profile: {
+      type: String,
+    },
   },
   {
     timestamps: true,
