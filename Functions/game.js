@@ -1121,10 +1121,10 @@ export const leaveApiCall = async (room, userId) => {
       let uid = item.id ? item.id : item.userid;
       users.push({
         uid,
-        hands:
-          url === 'https://leave-tab-v2-posthand-all-t3e66zpola-uc.a.run.app/'
-            ? []
-            : hands,
+        hands,
+        // hands: url === 'https://leave-tab-v2-posthand-all-t3e66zpola-uc.a.run.app/'
+        //   ? []
+        //   : hands,
         coinsBeforeJoin: item.coinsBeforeStart,
         gameLeaveAt: new Date(),
         gameJoinedAt: item.gameJoinedAt,
@@ -1172,8 +1172,9 @@ export const leaveApiCall = async (room, userId) => {
             { wallet: userBalanceNow }
           )
         );
+        console.log({ userBalanceNow });
       });
-      console.log({ userBalanceNow });
+
       await Promise.allSettled(userWinPromise);
     }
 
