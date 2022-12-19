@@ -24,6 +24,7 @@ import User from './../landing-server/models/user.model.js';
 import MessageModal from '../modals/messageModal.js';
 import transactionModel from '../modals/transactionModal.js';
 import Notification from '../modals/NotificationModal.js';
+import rankModel from '../modals/rankModal.js';
 
 const convertMongoId = (id) => mongoose.Types.ObjectId(id);
 
@@ -31,6 +32,11 @@ const addNewuserToIo = (io, socket, userId, tableId) => {
   io.users = [...new Set([...io.users, userId])];
   socket.customId = userId;
   socket.customRoom = tableId;
+  const lastSocketData = [...io.room];
+  lastSocketData.push({ room: tableId });
+  io.room = [...new Set(lastSocketData.map((ele) => ele.room))].map((el) => {
+    return { room: el, pretimer: false };
+  });
 };
 
 export const createNewGame = async (io, socket, data) => {
@@ -1101,6 +1107,7 @@ const userTotalWinAmount = (coinsBeforeJoin, hands, userId, roomId) => {
   let userBalanceNow = 0;
   userBalanceNow = coinsBeforeJoin;
   const transactions = [];
+  let stats = { win: 0, loss: 0, totalWinAmount: 0, totalLossAmount: 0 };
 
   hands.forEach((elHand) => {
     const { action, amount } = elHand;
@@ -1120,13 +1127,28 @@ const userTotalWinAmount = (coinsBeforeJoin, hands, userId, roomId) => {
 
     if (action === 'game-lose') {
       userBalanceNow -= amount;
+      stats = {
+        ...stats,
+        loss: stats.loss + 1,
+        totalLossAmount: stats.totalLossAmount + amount,
+      };
     } else if (action === 'game-draw') {
       userBalanceNow -= amount;
     } else if (action === 'game-win') {
+      stats = {
+        ...stats,
+        win: stats.win + 1,
+        totalWinAmount: stats.totalWinAmount + amount,
+      };
       userBalanceNow += amount;
     }
   });
-  return { userBalanceNow, transactions };
+  return {
+    userBalanceNow,
+    transactions,
+    stats,
+    shouldUpdateStats: Object.values(stats).some((el) => el > 0),
+  };
 };
 
 export const leaveApiCall = async (room, userId) => {
@@ -1197,15 +1219,20 @@ export const leaveApiCall = async (room, userId) => {
       );
       let userTotalWin = 0;
       let userTransaction = [];
+      let statsData = {};
+      let canUpdateStats = false;
       if (leavingUserData) {
-        const { userBalanceNow, transactions } = userTotalWinAmount(
-          leavingUserData.coinsBeforeJoin,
-          leavingUserData.hands,
-          userId,
-          room.tableId
-        );
+        const { userBalanceNow, transactions, stats, shouldUpdateStats } =
+          userTotalWinAmount(
+            leavingUserData.coinsBeforeJoin,
+            leavingUserData.hands,
+            userId,
+            room.tableId
+          );
         userTransaction = [...transactions];
         userTotalWin = userBalanceNow;
+        statsData = { ...stats };
+        canUpdateStats = shouldUpdateStats;
       }
 
       console.log(JSON.stringify(userTransaction));
@@ -1217,17 +1244,37 @@ export const leaveApiCall = async (room, userId) => {
         { _id: convertMongoId(userId) },
         { wallet: userTotalWin }
       );
+      if (canUpdateStats) {
+        await rankModel.updateOne(
+          {
+            userId: convertMongoId(userId),
+            gameName: 'blackjack',
+          },
+          {
+            $inc: {
+              win: statsData.win,
+              loss: statsData.loss,
+              totalWinAmount: statsData.totalWinAmount,
+              totalLossAmount: statsData.totalLossAmount,
+            },
+          },
+          { upsert: true }
+        );
+      }
+
       console.log({ userTotalWin });
     } else {
       const userWinPromise = [];
       let allTransactions = [];
+      let statsPromise = [];
       payload.users.forEach((elUser) => {
-        const { userBalanceNow, transactions } = userTotalWinAmount(
-          elUser.coinsBeforeJoin,
-          elUser.hands,
-          elUser.uid,
-          room.tableId
-        );
+        const { userBalanceNow, transactions, stats, shouldUpdateStats } =
+          userTotalWinAmount(
+            elUser.coinsBeforeJoin,
+            elUser.hands,
+            elUser.uid,
+            room.tableId
+          );
         allTransactions = [...allTransactions, ...transactions];
         userWinPromise.push(
           User.updateOne(
@@ -1235,13 +1282,33 @@ export const leaveApiCall = async (room, userId) => {
             { wallet: userBalanceNow }
           )
         );
+        if (shouldUpdateStats) {
+          statsPromise.push(
+            rankModel.updateOne(
+              {
+                userId: convertMongoId(elUser.uid),
+                gameName: 'blackjack',
+              },
+              {
+                $inc: {
+                  win: stats.win,
+                  loss: stats.loss,
+                  totalWinAmount: stats.totalWinAmount,
+                  totalLossAmount: stats.totalLossAmount,
+                },
+              },
+              { upsert: true }
+            )
+          );
+        }
         console.log({ userBalanceNow });
       });
       console.log(JSON.stringify(allTransactions));
-      await Promise.allSettled(
-        userWinPromise,
-        transactionModel.insertMany(allTransactions)
-      );
+      await Promise.allSettled([
+        ...userWinPromise,
+        transactionModel.insertMany(allTransactions),
+        ...statsPromise,
+      ]);
     }
 
     console.log('payload =>', JSON.stringify(payload));
