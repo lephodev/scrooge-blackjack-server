@@ -21,8 +21,17 @@ import {
 import userModel from './../landing-server/models/user.model.js';
 import mongoose from 'mongoose';
 import User from './../landing-server/models/user.model.js';
+import MessageModal from '../modals/messageModal.js';
+import transactionModel from '../modals/transactionModal.js';
+import Notification from '../modals/NotificationModal.js';
 
 const convertMongoId = (id) => mongoose.Types.ObjectId(id);
+
+const addNewuserToIo = (io, socket, userId, tableId) => {
+  io.users = [...new Set([...io.users, userId])];
+  socket.customId = userId;
+  socket.customRoom = tableId;
+};
 
 export const createNewGame = async (io, socket, data) => {
   try {
@@ -112,8 +121,7 @@ export const createNewGame = async (io, socket, data) => {
           return { room: el, pretimer: false };
         }
       );
-      console.log({ rooms: io.room });
-      socket.customRoom = tableId;
+      addNewuserToIo(io, socket, userid, tableId);
       io.in(tableId).emit('gameCreated', {
         game: newRoom,
         tableId: tableId,
@@ -141,7 +149,8 @@ export const joinGame = async (io, socket, data) => {
     const { tableId } = data.table;
     const room = await roomModel.findOne({ tableId });
     if (room.players.find((el) => el.id.toString() === userid?.toString())) {
-      return io.in(roomid).emit('updateRoom', room);
+      addNewuserToIo(io, socket, userid, tableId);
+      return io.in(tableId).emit('updateRoom', room);
     }
     if (room.players.length >= 7) {
       // Max players reached
@@ -151,7 +160,6 @@ export const joinGame = async (io, socket, data) => {
 
     let players = [...room.players];
     // push new user to players game
-    console.log('PHOTOURI in JOIN table', photoURI);
     players.push({
       name: nickname,
       isAdmin: false,
@@ -195,6 +203,7 @@ export const joinGame = async (io, socket, data) => {
       .select('-deck');
     if (updatedRoom) {
       socket.join(tableId);
+      addNewuserToIo(io, socket, userid, tableId);
       socket.emit('joined');
       let lastSocketData = io.room;
       lastSocketData.push({ room: tableId, pretimer: false });
@@ -205,7 +214,6 @@ export const joinGame = async (io, socket, data) => {
         }
       );
       console.log('rrr =>', io.room);
-      socket.customRoom = tableId;
       io.in(tableId).emit('newPlayer', updatedRoom);
     } else {
       socket.emit('actionError', { msg: 'Unable to Join' });
@@ -228,6 +236,7 @@ export const rejoinGame = async (io, socket, data) => {
       });
       if (game) {
         socket.join(roomId);
+        addNewuserToIo(io, socket, userId, roomId);
         io.in(roomId).emit('updateRoom', game);
       } else {
         socket.emit('notJoin');
@@ -968,6 +977,29 @@ export const InvitePlayers = async (io, socket, data) => {
       { new: true }
     );
     if (updateRoom) {
+      const sendMessageToInvitedUsers = [
+        ...newInvPlayers.map((el) => {
+          return {
+            sender: data.userId,
+            receiver: el,
+            message: `<a href='${process.env.CLIENTURL}/?tableid=${data.tableId}&gameCollection=Blackjack_Tables#/'>Click here</a> to play blackjack with me.`,
+          };
+        }),
+      ];
+
+      const sendNotificationToInvitedUsers = [
+        ...newInvPlayers.map((el) => {
+          return {
+            sender: data.userId,
+            receiver: el,
+            message: `has invited you to play blackjack.`,
+            url: `${process.env.CLIENTURL}/?tableid=${data.tableId}&gameCollection=Blackjack_Tables#/`,
+          };
+        }),
+      ];
+
+      await MessageModal.insertMany(sendMessageToInvitedUsers);
+      await Notification.insertMany(sendNotificationToInvitedUsers);
       // const res = await axios.get(
       //   'https://invite2-lobby-t3e66zpola-ue.a.run.app/',
       //   {
@@ -1065,11 +1097,27 @@ export const finishHandApiCall = async (room) => {
   }
 };
 
-const userTotalWinAmount = (coinsBeforeJoin, hands) => {
+const userTotalWinAmount = (coinsBeforeJoin, hands, userId, roomId) => {
   let userBalanceNow = 0;
   userBalanceNow = coinsBeforeJoin;
+  const transactions = [];
+
   hands.forEach((elHand) => {
     const { action, amount } = elHand;
+
+    transactions.push({
+      userId,
+      roomId,
+      amount: action === 'game-lose' ? -amount : amount,
+      prevWallet: userBalanceNow,
+      updatedWallet:
+        action === 'game-lose'
+          ? userBalanceNow - amount
+          : userBalanceNow + amount,
+      transactionDetails: {},
+      transactionType: 'blackjack',
+    });
+
     if (action === 'game-lose') {
       userBalanceNow -= amount;
     } else if (action === 'game-draw') {
@@ -1078,7 +1126,7 @@ const userTotalWinAmount = (coinsBeforeJoin, hands) => {
       userBalanceNow += amount;
     }
   });
-  return userBalanceNow;
+  return { userBalanceNow, transactions };
 };
 
 export const leaveApiCall = async (room, userId) => {
@@ -1148,11 +1196,22 @@ export const leaveApiCall = async (room, userId) => {
         (el) => el.uid.toString() === userId.toString()
       );
       let userTotalWin = 0;
+      let userTransaction = [];
       if (leavingUserData) {
-        userTotalWin = userTotalWinAmount(
+        const { userBalanceNow, transactions } = userTotalWinAmount(
           leavingUserData.coinsBeforeJoin,
-          leavingUserData.hands
+          leavingUserData.hands,
+          userId,
+          room.tableId
         );
+        userTransaction = [...transactions];
+        userTotalWin = userBalanceNow;
+      }
+
+      console.log(JSON.stringify(userTransaction));
+
+      if (userTransaction.length) {
+        await transactionModel.insertMany(userTransaction);
       }
       await User.updateOne(
         { _id: convertMongoId(userId) },
@@ -1161,11 +1220,15 @@ export const leaveApiCall = async (room, userId) => {
       console.log({ userTotalWin });
     } else {
       const userWinPromise = [];
+      let allTransactions = [];
       payload.users.forEach((elUser) => {
-        const userBalanceNow = userTotalWinAmount(
+        const { userBalanceNow, transactions } = userTotalWinAmount(
           elUser.coinsBeforeJoin,
-          elUser.hands
+          elUser.hands,
+          elUser.uid,
+          room.tableId
         );
+        allTransactions = [...allTransactions, ...transactions];
         userWinPromise.push(
           User.updateOne(
             { _id: convertMongoId(elUser.uid) },
@@ -1174,8 +1237,11 @@ export const leaveApiCall = async (room, userId) => {
         );
         console.log({ userBalanceNow });
       });
-
-      await Promise.allSettled(userWinPromise);
+      console.log(JSON.stringify(allTransactions));
+      await Promise.allSettled(
+        userWinPromise,
+        transactionModel.insertMany(allTransactions)
+      );
     }
 
     console.log('payload =>', JSON.stringify(payload));
@@ -1210,6 +1276,8 @@ export const leaveApiCall = async (room, userId) => {
 
 export const checkRoom = async (data, socket, io) => {
   try {
+    console.log({ customId: socket.customId, customRoom: socket.customRoom });
+
     const { tableId, userId, gameType } = data;
     const userData = await userModel.findOne({ _id: convertMongoId(userId) });
     console.log({ userData });
@@ -1248,10 +1316,12 @@ export const checkRoom = async (data, socket, io) => {
     };
 
     if (roomData) {
+      // Check if user is in the game
       if (
         roomData.players.find((ele) => ele.id.toString() === userId.toString())
       ) {
         socket.join(tableId);
+        addNewuserToIo(io, socket, userId, tableId);
         io.in(tableId).emit('updateRoom', roomData);
         return;
       }
@@ -1260,14 +1330,44 @@ export const checkRoom = async (data, socket, io) => {
         socket.emit('actionError', { msg: 'Not enough balance' });
         return;
       }
-
+      // join the user in the game
       joinGame(io, socket, payload);
     } else {
+      // if there is no userid and user in some other games so we will redirect user
+      const checkUserInOtherTable = await roomModel.findOne({
+        'players.id': convertMongoId(userId),
+      });
+
+      console.log({ checkUserInOtherTable });
+
+      if (checkUserInOtherTable) {
+        socket.join(checkUserInOtherTable.tableId);
+        let lastSocketData = io.room;
+        const checkIfRoomExistsInSocket = lastSocketData.find(
+          (el) =>
+            el.room.toString() === checkUserInOtherTable.tableId.toString()
+        );
+        if (!checkIfRoomExistsInSocket) {
+          io.room.push({
+            room: checkUserInOtherTable.tableId,
+            pretimer: checkUserInOtherTable.preTimer,
+          });
+        }
+
+        addNewuserToIo(io, socket, userId, checkUserInOtherTable.tableId);
+        io.in(checkUserInOtherTable.tableId).emit('gameCreated', {
+          game: checkUserInOtherTable,
+          tableId: checkUserInOtherTable.tableId,
+        });
+        return;
+      }
+      //  Check if user have balance
       if (payload.user.amount < payload.table.minBet) {
         socket.emit('actionError', { msg: 'Not enough balance' });
         return;
       }
       console.log({ payload });
+      // Create new game
       createNewGame(io, socket, payload);
     }
   } catch (error) {

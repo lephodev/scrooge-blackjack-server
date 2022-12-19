@@ -135,8 +135,10 @@ const socketConnection = (io) => {
         let filteredSockets = lastSockets.filter(
           (el) => el === socket.customId
         );
+        console.log({ filteredSockets });
         const roomid = io.room;
         let filteredRoom = roomid.filter((el) => el.room === socket.customRoom);
+        console.log({ filteredRoom });
         if (filteredSockets.length > 0 && filteredRoom.length > 0) {
           let indexUser = lastSockets.indexOf(socket.customId);
           if (indexUser !== -1) lastSockets.splice(indexUser, 1);
@@ -172,6 +174,8 @@ const socketConnection = (io) => {
               await exitRoom(io, socket, dd);
             }
           }, 120000);
+        } else {
+          console.log('FAILED TO COMPLETE DISCONNECT PART');
         }
       } catch (e) {
         console.log('error in disconnect block', e);
