@@ -391,6 +391,7 @@ export const exitRoom = async (io, socket, data) => {
         await roomModel.deleteOne({
           tableId,
         });
+        console.log('GAME FINISHED ON LINE 394');
         io.in(tableId).emit('gameFinished', {
           msg: 'All player left, game finished',
         });
@@ -454,6 +455,7 @@ export const exitRoom = async (io, socket, data) => {
           await roomModel.deleteOne({
             tableId,
           });
+          console.log('GAME FINISHED ON LINE 458');
           io.in(tableId).emit('gameFinished', {
             msg: 'All player left, game finished',
           });
@@ -643,6 +645,7 @@ export const startGame = async (io, data) => {
 };
 
 export const checkForTable = async (data, socket, io) => {
+  console.log('---------------- INSIDE CHECK FOR TABLE --------------');
   try {
     const { room, gameType, user } = data;
     if (!room.roomid) return;
@@ -679,6 +682,7 @@ export const checkForTable = async (data, socket, io) => {
         isRoomExist.finish ||
         room.table.status === 'empty'
       ) {
+        console.log('GAMI FINISHED ON LINE 684');
         return socket.emit('gameFinished', 'Game Already Finished.');
       }
       if (
@@ -763,6 +767,7 @@ export const checkForTable = async (data, socket, io) => {
     } else {
       if (room.table.isGameFinished || room.table.status === 'empty') {
         updateInGameStatus(user.userid);
+        console.log('GAME FINISHED ON LINE 769');
         return socket.emit('gameFinished', 'Game Already Finished.');
       }
       if (
@@ -988,7 +993,7 @@ export const InvitePlayers = async (io, socket, data) => {
           return {
             sender: data.userId,
             receiver: el,
-            message: `<a href='${process.env.CLIENTURL}/?tableid=${data.tableId}&gameCollection=Blackjack_Tables#/'>Click here</a> to play blackjack with me.`,
+            message: `<a href='${process.env.CLIENTURL}?tableid=${data.tableId}&gameCollection=Blackjack_Tables#/'>Click here</a> to play blackjack with me.`,
           };
         }),
       ];
@@ -999,29 +1004,14 @@ export const InvitePlayers = async (io, socket, data) => {
             sender: data.userId,
             receiver: el,
             message: `has invited you to play blackjack.`,
-            url: `${process.env.CLIENTURL}/?tableid=${data.tableId}&gameCollection=Blackjack_Tables#/`,
+            url: `${process.env.CLIENTURL}?tableid=${data.tableId}&gameCollection=Blackjack_Tables#/`,
           };
         }),
       ];
 
       await MessageModal.insertMany(sendMessageToInvitedUsers);
       await Notification.insertMany(sendNotificationToInvitedUsers);
-      // const res = await axios.get(
-      //   'https://invite2-lobby-t3e66zpola-ue.a.run.app/',
-      //   {
-      //     params: {
-      //       usid: data.userId,
-      //       game: data.gameType,
-      //       tabId: data.tableId,
-      //       toInvite: newInvPlayers.join(','),
-      //     },
-      //     headers: {
-      //       'Content-Type': 'application/json',
-      //       origin: socket.handshake.headers.origin,
-      //     },
-      //   }
-      // );
-      // if (res.data.error === 'no error') {
+
       socket.emit('invitationSend', {
         room: updateRoom,
       });
