@@ -153,7 +153,13 @@ const socketConnection = (io) => {
 
           setTimeout(async () => {
             let dd = { ...data };
-            if (io.users.find((ele) => ele === dd.userId)) {
+            console.log('---- INSIDE SOCKET ----');
+            console.log('IO USERS => ', JSON.stringify(io.users));
+            console.log('USERSID => ', JSON.stringify(data));
+
+            if (
+              io.users.find((ele) => ele.toString() === dd?.userId?.toString())
+            ) {
               console.log('reconnected =>', dd);
               await roomModel.updateOne(
                 {
