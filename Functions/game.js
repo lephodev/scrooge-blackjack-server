@@ -29,6 +29,7 @@ import rankModel from '../modals/rankModal.js';
 const convertMongoId = (id) => mongoose.Types.ObjectId(id);
 
 const addNewuserToIo = (io, socket, userId, tableId) => {
+  console.log('--- ADD NEW USER TO IO ----', { userId, tableId });
   io.users = [...new Set([...io.users, userId])];
   socket.customId = userId;
   socket.customRoom = tableId;
