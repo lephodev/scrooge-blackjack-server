@@ -1160,10 +1160,11 @@ export const leaveApiCall = async (room, userId) => {
     }
     let allUsers = player.concat(room.watchers);
     console.log('users =>', allUsers, userId);
-    if (userId)
+    if (userId) {
       allUsers = allUsers.filter(
         (ele) => ele.id.toString() === userId.toString()
       );
+    }
     let users = [];
 
     allUsers.forEach((item) => {
