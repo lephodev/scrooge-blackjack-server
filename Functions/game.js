@@ -1450,10 +1450,10 @@ export const checkRoom = async (data, socket, io) => {
         return;
       }
 
-      if (payload.user.amount < payload.table.minBet) {
-        socket.emit('actionError', { msg: 'Not enough balance' });
-        return;
-      }
+      // if (payload.user.amount < payload.table.minBet) {
+      //   socket.emit('actionError', { msg: 'Not enough balance' });
+      //   return;
+      // }
       // join the user in the game
       joinGame(io, socket, payload);
     } else {
@@ -1486,8 +1486,10 @@ export const checkRoom = async (data, socket, io) => {
         return;
       }
       //  Check if user have balance
-      if (payload.user.amount < payload.table.minBet) {
-        socket.emit('actionError', { msg: 'Not enough balance' });
+      if (!payload.user.amount) {
+        socket.emit('actionError', {
+          msg: `Not enough balance.`,
+        });
         return;
       }
       console.log({ payload });
