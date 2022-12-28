@@ -434,6 +434,21 @@ app.post('/createTable', auth(), async (req, res) => {
   }
 });
 
+app.get('/getTablePlayers/:tableId', async (req, res) => {
+  try {
+    const roomData = await roomModel.findOne({ tableId: req.params.tableId });
+
+    if (!roomData) {
+      return res.status(403).send({ message: 'Room not found' });
+    }
+
+    res.status(200).send({ players: roomData.players });
+  } catch (error) {
+    console.log(error);
+    res.status(500).send({ message: 'Internal server error' });
+  }
+});
+
 server.listen(process.env.PORT, () =>
   console.log(`Listening on ${process.env.PORT}`)
 );
