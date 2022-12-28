@@ -14,6 +14,7 @@ import {
   joinGame,
   rejoinGame,
   startPreGameTimer,
+  makeSliderBet,
 } from '../Functions/game.js';
 import {
   doubleAction,
@@ -36,6 +37,11 @@ const socketConnection = (io) => {
     // user bet
     socket.on('bet', async (data) => {
       await bet(io, socket, data);
+    });
+
+    // user bet with slider
+    socket.on('makeSliderBet', async (data) => {
+      await makeSliderBet(io, socket, data);
     });
 
     // clear user bet

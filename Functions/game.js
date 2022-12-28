@@ -254,6 +254,69 @@ export const rejoinGame = async (io, socket, data) => {
   }
 };
 
+export const makeSliderBet = async (io, socket, data) => {
+  try {
+    // check game is exist and user is in the game
+    let { roomId, userId, betAmount } = data;
+    userId = convertMongoId(userId);
+    console.log({ roomId, userId, betAmount });
+    if (roomId && userId) {
+      const game = await roomModel.findOne({
+        $and: [
+          { tableId: roomId },
+          { players: { $elemMatch: { id: convertMongoId(userId) } } },
+          { gamestart: false },
+        ],
+      });
+      console.log({ game });
+      if (!game) return socket.emit('gameAlreadyStarted');
+      const findUser = game.players.find(
+        (el) => el.id.toString() === userId.toString()
+      );
+      const totalWalletBalance = findUser.wallet + findUser.betAmount;
+      if (totalWalletBalance >= betAmount) {
+        const bet = await roomModel.updateOne(
+          {
+            $and: [
+              { tableId: roomId },
+              { players: { $elemMatch: { id: userId } } },
+            ],
+          },
+          {
+            $set: {
+              'players.$.betAmount': betAmount,
+              'players.$.wallet': totalWalletBalance - betAmount,
+            },
+          }
+        );
+        console.log({ bet });
+        if (bet.matchedCount === 1) {
+          const latestBet = await roomModel
+            .findOne({
+              $and: [
+                { tableId: roomId },
+                { players: { $elemMatch: { id: userId } } },
+              ],
+            })
+            .select('-deck');
+          console.log({ latestBet });
+          io.in(roomId).emit('updateRoom', latestBet);
+        } else {
+          console.log('Action error');
+          socket.emit('actionError', {
+            msg: 'Unable to bet',
+          });
+        }
+      } else {
+        console.log('Low balance issue');
+        socket.emit('lowBalance');
+      }
+    }
+  } catch (error) {
+    console.log('Error in bet =>', error.message);
+  }
+};
+
 export const bet = async (io, socket, data) => {
   try {
     // check game is exist and user is in the game
