@@ -15,22 +15,30 @@ const userSchema = mongoose.Schema(
       type: String,
       trim: true,
     },
+    profile: {
+      type: String,
+    },
     username: {
       type: String,
       trim: true,
-      required: true,
+      // required: true,
     },
     phone: {
       type: String,
-      required: true,
+      // required: true,
       trim: true,
     },
-    date: {
-      type: String,
+    followers: {
+      type: [String],
     },
+    followersCount: { type: Number, default: 0 },
+    following: {
+      type: [String],
+    },
+    followingCount: { type: Number, default: 0 },
     email: {
       type: String,
-      required: true,
+      // required: true,
       unique: true,
       trim: true,
       lowercase: true,
@@ -40,9 +48,18 @@ const userSchema = mongoose.Schema(
         }
       },
     },
+    wallet: {
+      type: Number,
+      default: 0,
+    },
+    termsAccept: {
+      type: Boolean,
+      default: false,
+    },
+    friends: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Friends' }],
     password: {
       type: String,
-      required: true,
+      // required: true,
       trim: true,
       minlength: 8,
       validate(value) {
@@ -67,16 +84,17 @@ const userSchema = mongoose.Schema(
       type: Boolean,
       default: false,
     },
-    wallet: {
-      type: Number,
-      default: 0,
-    },
-    termsAccept: {
+    isRegistrationComplete: {
       type: Boolean,
       default: false,
     },
-    profile: {
+    googleId: {
       type: String,
+      default: false,
+    },
+    isBlock: {
+      type: Boolean,
+      default: false,
     },
   },
   {
