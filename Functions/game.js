@@ -994,7 +994,7 @@ export const InvitePlayers = async (io, socket, data) => {
           return {
             sender: data.userId,
             receiver: el,
-            message: `<a href='${process.env.CLIENTURL}?tableid=${data.tableId}&gameCollection=Blackjack_Tables#/'>Click here</a> to play blackjack with me.`,
+            message: `<a href='${process.env.CLIENTURL}?tableid=${data.tableId}&gameCollection=Blackjack_Tables'>Click here</a> to play blackjack with me.`,
           };
         }),
       ];
@@ -1005,7 +1005,7 @@ export const InvitePlayers = async (io, socket, data) => {
             sender: data.userId,
             receiver: el,
             message: `has invited you to play blackjack.`,
-            url: `${process.env.CLIENTURL}?tableid=${data.tableId}&gameCollection=Blackjack_Tables#/`,
+            url: `${process.env.CLIENTURL}?tableid=${data.tableId}&gameCollection=Blackjack_Tables`,
           };
         }),
       ];
@@ -1160,10 +1160,11 @@ export const leaveApiCall = async (room, userId) => {
     }
     let allUsers = player.concat(room.watchers);
     console.log('users =>', allUsers, userId);
-    if (userId)
+    if (userId) {
       allUsers = allUsers.filter(
         (ele) => ele.id.toString() === userId.toString()
       );
+    }
     let users = [];
 
     allUsers.forEach((item) => {
@@ -1343,6 +1344,8 @@ export const checkRoom = async (data, socket, io) => {
       // Check user not found and redirect back
       return;
     }
+
+    console.log({ data });
 
     const roomData = await roomModel.findOne({ tableId });
     console.log({ roomData });

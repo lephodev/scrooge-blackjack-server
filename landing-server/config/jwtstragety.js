@@ -3,7 +3,7 @@ import tokenTypes from './tokens.js';
 import User from '../models/user.model.js';
 
 const jwtOptions = {
-  secretOrKey: process.env.JWT_SECRET,
+  secretOrKey: 'thisisasamplesecret',
   jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
 };
 

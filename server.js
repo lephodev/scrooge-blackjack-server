@@ -14,6 +14,9 @@ import {
 } from './firestore/dbFetch.js';
 import mongoose from 'mongoose';
 import User from './landing-server/models/user.model.js';
+import auth from './landing-server/middlewares/auth.js';
+import jwtStrategy from './landing-server/config/jwtstragety.js';
+import passport from 'passport';
 
 dotenv.config();
 const app = express();
@@ -33,10 +36,20 @@ const corsOptions = {
     }
   },
 };
+
+app.use(express.json());
+app.use(
+  express.urlencoded({
+    extended: false,
+  })
+);
+
 app.use(cors());
 const server = createServer(app);
 const io = new Server(server, {});
 socketConnection(io);
+
+passport.use('jwt', jwtStrategy);
 
 app.get('/', (req, res) => {
   res.send('<h1>Blackjack Server is running</h1>');
@@ -226,7 +239,7 @@ app.get('/checkUserInGame/:userId', async (req, res) => {
       res.status(200).send({
         success: false,
         gameStatus: 'InGame',
-        link: `${req.baseUrl}/blackjack/index.html?tableid=${room.tableId}&gameCollection=${room.gameType}#/`,
+        link: `${req.baseUrl}/blackjack/index.html?tableid=${room.tableId}&gameCollection=${room.gameType}`,
         leaveTableUrl: `https://blackjack-server-t3e66zpola-uc.a.run.app/leaveGame/${room.tableId}/${userId}`,
       });
     } else {
@@ -269,6 +282,155 @@ app.get('/getUserForInvite/:tableId', async (req, res) => {
     return res.status(200).send({ data: allUsers });
   } catch (error) {
     return res.status(500).send({ msg: 'Internal server error' });
+  }
+});
+
+app.get('/getRunningGame', async (req, res) => {
+  const blackjackRooms = await roomModel.find({ public: true, finish: false });
+  console.log({ blackjackRooms });
+  res.status(200).send({ rooms: blackjackRooms });
+});
+
+app.get('/getAllUsers', async (req, res) => {
+  // const { userId } = req.params;
+  // if (!userId) {
+  //   return res.status(400).send({ message: 'User id is required.' });
+  // }
+
+  try {
+    const friendList = await User.find({
+      isRegistrationComplete: true,
+    });
+    // .populate({
+    //   path: 'friends',
+    //   select: {
+    //     recipient: 1,
+    //     requester: 1,
+    //     status: 1,
+    //     isBlocked: 1,
+    //     isDeleted: 1,
+    //   },
+    //   populate: {
+    //     path: 'recipient',
+    //   },
+    // });
+
+    res.status(200).send({ allUsers: friendList });
+  } catch (error) {
+    console.log(error);
+    res.status(500).send({ message: 'Internal server error.' });
+  }
+});
+
+app.post('/createTable', auth(), async (req, res) => {
+  try {
+    const { gameName, public: isPublic, invitedUsers } = req.body;
+    const { username, wallet, email, _id, avatar } = req.user;
+    let valid = true;
+    let err = {};
+    const mimimumBet = 0;
+    if (!gameName) {
+      err.gameName = 'Game name is required.';
+      valid = false;
+    }
+
+    if (!wallet) {
+      err.gameName = "You don't have enough balance in your wallet.";
+      valid = false;
+    }
+
+    if (!valid) {
+      return res.status(403).send({ ...err });
+    }
+
+    let query = { 'players.userid': _id };
+    const checkRoom = await roomModel.findOne(query);
+    if (checkRoom) {
+      return res.status(403).send({ message: 'You are already in game.' });
+    }
+
+    const invitetedPlayerUserId = invitedUsers.map((el) => el.value);
+
+    const newRoom = await roomModel.create({
+      players: [
+        {
+          name: username,
+          wallet: wallet,
+          hands: hands,
+          cards: [],
+          coinsBeforeStart: amount,
+          avatar: photoURI,
+          id: convertMongoId(userid),
+          betAmount: 0,
+          isPlaying: false,
+          turn: false,
+          sum: 0,
+          hasAce: false,
+          isBusted: false,
+          doubleDown: false,
+          blackjack: false,
+          isSameCard: false,
+          isSplitted: false,
+          splitSum: [],
+          splitIndex: null,
+          stats,
+          gameJoinedAt: new Date(),
+          meetingToken,
+          isSurrender: false,
+          isActed: false,
+          action: '',
+        },
+      ],
+      remainingPretimer: 5,
+      gamestart: false,
+      finish: false,
+      hostId: admin,
+      invPlayers,
+      public: data.table.public,
+      allowWatcher: alloWatchers,
+      media,
+      timer: rTimeout,
+      gameType,
+      gameName: name,
+      meetingToken,
+      meetingId,
+      dealer: {
+        cards: [],
+        hasAce: false,
+        sum: 0,
+      },
+    });
+
+    if (Array.isArray(invitetedPlayerUserId) && invitetedPlayerUserId.length) {
+      const sendMessageToInvitedUsers = [
+        ...invitetedPlayerUserId.map((el) => {
+          return {
+            sender: _id,
+            receiver: el,
+            message: `<a href='${process.env.CLIENTURL}/table?tableid=${roomData._id}&gamecollection=poker'>Click here</a> to play poker with me.`,
+          };
+        }),
+      ];
+
+      const sendNotificationToInvitedUsers = [
+        ...invitetedPlayerUserId.map((el) => {
+          return {
+            sender: _id,
+            receiver: el,
+            message: `has invited you to play poker.`,
+            url: `${process.env.CLIENTURL}/table?tableid=${roomData._id}&gamecollection=poker`,
+          };
+        }),
+      ];
+
+      await Message.insertMany(sendMessageToInvitedUsers);
+      await Notification.insertMany(sendNotificationToInvitedUsers);
+    }
+
+    return res.status(200).send({ message: 'OK' });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).send({});
   }
 });
 
