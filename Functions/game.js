@@ -152,6 +152,7 @@ export const joinGame = async (io, socket, data) => {
       hands,
       amount,
       meetingToken,
+      originalWalletBalance,
     } = data.user;
     const { tableId } = data.table;
     const room = await roomModel.findOne({ tableId });
@@ -214,7 +215,10 @@ export const joinGame = async (io, socket, data) => {
       socket.emit('joined');
       let lastSocketData = io.room;
       lastSocketData.push({ room: tableId, pretimer: false });
-      await User.updateOne({ _id: convertMongoId(userid) }, { wallet: 0 });
+      await User.updateOne(
+        { _id: convertMongoId(userid) },
+        { wallet: originalWalletBalance - amount }
+      );
       io.room = [...new Set(lastSocketData.map((ele) => ele.room))].map(
         (el) => {
           return { room: el, pretimer: false };
@@ -708,6 +712,7 @@ export const startGame = async (io, data) => {
   }
 };
 
+// not in use
 export const checkForTable = async (data, socket, io) => {
   console.log('---------------- INSIDE CHECK FOR TABLE --------------');
   try {
@@ -1297,7 +1302,11 @@ export const leaveApiCall = async (room, userId) => {
       }
       await User.updateOne(
         { _id: convertMongoId(userId) },
-        { wallet: userTotalWin }
+        {
+          $inc: {
+            wallet: userTotalWin,
+          },
+        }
       );
       if (canUpdateStats) {
         await rankModel.updateOne(
@@ -1334,7 +1343,7 @@ export const leaveApiCall = async (room, userId) => {
         userWinPromise.push(
           User.updateOne(
             { _id: convertMongoId(elUser.uid) },
-            { wallet: userBalanceNow }
+            { $inc: { wallet: userBalanceNow } }
           )
         );
         if (shouldUpdateStats) {
@@ -1400,7 +1409,7 @@ export const checkRoom = async (data, socket, io) => {
   try {
     console.log({ customId: socket.customId, customRoom: socket.customRoom });
 
-    const { tableId, userId, gameType } = data;
+    const { tableId, userId, gameType, sitInAmount } = data;
     const userData = await userModel.findOne({ _id: convertMongoId(userId) });
     console.log({ userData });
     if (!userData) {
@@ -1412,6 +1421,7 @@ export const checkRoom = async (data, socket, io) => {
 
     const roomData = await roomModel.findOne({ tableId });
     console.log({ roomData });
+    const sitAmount = typeof sitInAmount === 'number' ? sitInAmount : 0;
     const payload = {
       user: {
         nickname: userData.username,
@@ -1420,8 +1430,9 @@ export const checkRoom = async (data, socket, io) => {
         userid: convertMongoId(userId),
         deduct: 0,
         hands: [],
-        amount: userData.wallet,
+        amount: sitAmount > 0 ? sitAmount : userData.wallet,
         meetingToken: '',
+        originalWalletBalance: userData.wallet,
       },
       table: {
         tableId,
