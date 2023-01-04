@@ -17,6 +17,9 @@ import User from './landing-server/models/user.model.js';
 import auth from './landing-server/middlewares/auth.js';
 import jwtStrategy from './landing-server/config/jwtstragety.js';
 import passport from 'passport';
+import Token from './landing-server/models/Token.model.js';
+import Message from './modals/messageModal.js';
+import Notification from './modals/NotificationModal.js';
 
 dotenv.config();
 const app = express();
@@ -328,7 +331,7 @@ app.post('/createTable', auth(), async (req, res) => {
     const { username, wallet, email, _id, avatar } = req.user;
     let valid = true;
     let err = {};
-    const mimimumBet = 0;
+    const mimimumBet = 100;
     if (!gameName) {
       err.gameName = 'Game name is required.';
       valid = false;
@@ -351,6 +354,23 @@ app.post('/createTable', auth(), async (req, res) => {
 
     const invitetedPlayerUserId = invitedUsers.map((el) => el.value);
 
+    // table: {
+    //   tableId,
+    //   alloWatchers: false,
+    //   media: 'no-media',
+    //   admin: convertMongoId(userId),
+    //   name: 'test game',
+    //   minBet: 500,
+    //   invPlayers: [],
+    //   gameType,
+    //   rTimeout: 40,
+    //   meetingId: '',
+    //   public: true,
+    //   gameTime: 5,
+    // },
+
+    const rTimeout = 40;
+
     const newRoom = await roomModel.create({
       players: [
         {
@@ -359,8 +379,8 @@ app.post('/createTable', auth(), async (req, res) => {
           hands: hands,
           cards: [],
           coinsBeforeStart: amount,
-          avatar: photoURI,
-          id: convertMongoId(userid),
+          avatar: avatar,
+          id: _id,
           betAmount: 0,
           isPlaying: false,
           turn: false,
@@ -384,14 +404,14 @@ app.post('/createTable', auth(), async (req, res) => {
       remainingPretimer: 5,
       gamestart: false,
       finish: false,
-      hostId: admin,
+      hostId: _id,
       invPlayers,
-      public: data.table.public,
-      allowWatcher: alloWatchers,
+      public: isPublic,
+      allowWatcher: false,
       media,
       timer: rTimeout,
       gameType,
-      gameName: name,
+      gameName: gameName,
       meetingToken,
       meetingId,
       dealer: {
@@ -430,7 +450,22 @@ app.post('/createTable', auth(), async (req, res) => {
     return res.status(200).send({ message: 'OK' });
   } catch (error) {
     console.log(error);
-    return res.status(500).send({});
+    return res.status(500).send({ message: 'Internal server error.' });
+  }
+});
+
+app.get('/check-auth', auth(), async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    const checkTokenExists = await Token.findOne({ token });
+
+    if (!checkTokenExists) {
+      return res.status(500).send({ message: 'Token not exists.' });
+    }
+
+    res.status(200).send({ user: req.user });
+  } catch (error) {
+    res.status(500).send({ message: 'Internal server error' });
   }
 });
 
