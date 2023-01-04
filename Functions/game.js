@@ -1407,17 +1407,12 @@ export const leaveApiCall = async (room, userId) => {
 
 export const checkRoom = async (data, socket, io) => {
   try {
-    console.log({ customId: socket.customId, customRoom: socket.customRoom });
-
     const { tableId, userId, gameType, sitInAmount } = data;
     const userData = await userModel.findOne({ _id: convertMongoId(userId) });
-    console.log({ userData });
     if (!userData) {
-      // Check user not found and redirect back
+      socket.emit('redirectToClient');
       return;
     }
-
-    console.log({ data });
 
     const roomData = await roomModel.findOne({ tableId });
     console.log({ roomData });
@@ -1472,9 +1467,7 @@ export const checkRoom = async (data, socket, io) => {
       const checkUserInOtherTable = await roomModel.findOne({
         'players.id': convertMongoId(userId),
       });
-
-      console.log({ checkUserInOtherTable });
-
+      // Redirect user to the table on which he don't leave the game
       if (checkUserInOtherTable) {
         socket.join(checkUserInOtherTable.tableId);
         let lastSocketData = io.room;
@@ -1496,16 +1489,9 @@ export const checkRoom = async (data, socket, io) => {
         });
         return;
       }
-      //  Check if user have balance
-      if (!payload.user.amount) {
-        socket.emit('actionError', {
-          msg: `Not enough balance.`,
-        });
-        return;
-      }
-      console.log({ payload });
       // Create new game
-      createNewGame(io, socket, payload);
+      // createNewGame(io, socket, payload);
+      socket.emit('redirectToClient');
     }
   } catch (error) {
     console.log('Error in checkRoom =>', error);
