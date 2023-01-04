@@ -327,7 +327,7 @@ app.get('/getAllUsers', async (req, res) => {
 
 app.post('/createTable', auth(), async (req, res) => {
   try {
-    const { gameName, public: isPublic, invitedUsers } = req.body;
+    const { gameName, public: isPublic, invitedUsers, sitInAmount } = req.body;
     const { username, wallet, email, _id, avatar } = req.user;
     let valid = true;
     let err = {};
@@ -337,13 +337,23 @@ app.post('/createTable', auth(), async (req, res) => {
       valid = false;
     }
 
+    if (parseFloat(sitInAmount) < mimimumBet) {
+      err.sitInAmount = 'Minimum sitting amount is 100.';
+      valid = false;
+    }
+
+    if (parseFloat(sitInAmount) > wallet) {
+      err.sitInAmount = 'Sit in amount cant be more then user wallet amount.';
+      valid = false;
+    }
+
     if (!wallet) {
       err.gameName = "You don't have enough balance in your wallet.";
       valid = false;
     }
 
     if (!valid) {
-      return res.status(403).send({ ...err });
+      return res.status(403).send({ ...err, message: 'Invalid data' });
     }
 
     let query = { 'players.userid': _id };
@@ -354,31 +364,16 @@ app.post('/createTable', auth(), async (req, res) => {
 
     const invitetedPlayerUserId = invitedUsers.map((el) => el.value);
 
-    // table: {
-    //   tableId,
-    //   alloWatchers: false,
-    //   media: 'no-media',
-    //   admin: convertMongoId(userId),
-    //   name: 'test game',
-    //   minBet: 500,
-    //   invPlayers: [],
-    //   gameType,
-    //   rTimeout: 40,
-    //   meetingId: '',
-    //   public: true,
-    //   gameTime: 5,
-    // },
-
     const rTimeout = 40;
 
     const newRoom = await roomModel.create({
       players: [
         {
           name: username,
-          wallet: wallet,
-          hands: hands,
+          wallet: parseFloat(sitInAmount),
+          hands: [],
           cards: [],
-          coinsBeforeStart: amount,
+          coinsBeforeStart: parseFloat(sitInAmount),
           avatar: avatar,
           id: _id,
           betAmount: 0,
@@ -393,9 +388,9 @@ app.post('/createTable', auth(), async (req, res) => {
           isSplitted: false,
           splitSum: [],
           splitIndex: null,
-          stats,
+          stats: { countryCode: 'IN' },
           gameJoinedAt: new Date(),
-          meetingToken,
+          meetingToken: '',
           isSurrender: false,
           isActed: false,
           action: '',
@@ -405,15 +400,15 @@ app.post('/createTable', auth(), async (req, res) => {
       gamestart: false,
       finish: false,
       hostId: _id,
-      invPlayers,
+      invPlayers: invitetedPlayerUserId,
       public: isPublic,
       allowWatcher: false,
-      media,
+      media: 'no-media',
       timer: rTimeout,
-      gameType,
+      gameType: 'Blackjack_Tables',
       gameName: gameName,
-      meetingToken,
-      meetingId,
+      meetingToken: '',
+      meetingId: '',
       dealer: {
         cards: [],
         hasAce: false,
@@ -421,13 +416,15 @@ app.post('/createTable', auth(), async (req, res) => {
       },
     });
 
+    await User.updateOne({ _id }, { wallet: wallet - sitInAmount });
+
     if (Array.isArray(invitetedPlayerUserId) && invitetedPlayerUserId.length) {
       const sendMessageToInvitedUsers = [
         ...invitetedPlayerUserId.map((el) => {
           return {
             sender: _id,
             receiver: el,
-            message: `<a href='${process.env.CLIENTURL}/table?tableid=${roomData._id}&gamecollection=poker'>Click here</a> to play poker with me.`,
+            message: `<a href='${process.env.CLIENTURL}/table?tableid=${newRoom._id}&gamecollection=poker'>Click here</a> to play poker with me.`,
           };
         }),
       ];
@@ -438,7 +435,7 @@ app.post('/createTable', auth(), async (req, res) => {
             sender: _id,
             receiver: el,
             message: `has invited you to play poker.`,
-            url: `${process.env.CLIENTURL}/table?tableid=${roomData._id}&gamecollection=poker`,
+            url: `${process.env.CLIENTURL}/table?tableid=${newRoom._id}&gamecollection=poker`,
           };
         }),
       ];
@@ -447,7 +444,7 @@ app.post('/createTable', auth(), async (req, res) => {
       await Notification.insertMany(sendNotificationToInvitedUsers);
     }
 
-    return res.status(200).send({ message: 'OK' });
+    return res.status(200).send({ roomId: newRoom._id });
   } catch (error) {
     console.log(error);
     return res.status(500).send({ message: 'Internal server error.' });
