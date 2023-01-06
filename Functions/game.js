@@ -30,11 +30,11 @@ const convertMongoId = (id) => mongoose.Types.ObjectId(id);
 
 const addNewuserToIo = (io, socket, userId, tableId) => {
   console.log('--- ADD NEW USER TO IO ----', { userId, tableId });
-  io.users = [...new Set([...io.users, userId])];
+  io.users = [...new Set([...io.users, userId.toString()])];
   socket.customId = userId;
-  socket.customRoom = tableId;
+  socket.customRoom = tableId.toString();
   const lastSocketData = [...io.room];
-  lastSocketData.push({ room: tableId });
+  lastSocketData.push({ room: tableId.toString() });
   io.room = [...new Set(lastSocketData.map((ele) => ele.room))].map((el) => {
     return { room: el, pretimer: false };
   });
@@ -155,8 +155,10 @@ export const joinGame = async (io, socket, data) => {
       originalWalletBalance,
     } = data.user;
     const { tableId } = data.table;
+    console.log(data.user);
     const room = await roomModel.findOne({ tableId });
     if (room.players.find((el) => el.id.toString() === userid?.toString())) {
+      console.log('ALREADY ON THE TABLE ', tableId);
       addNewuserToIo(io, socket, userid, tableId);
       return io.in(tableId).emit('updateRoom', room);
     }
@@ -225,6 +227,7 @@ export const joinGame = async (io, socket, data) => {
         }
       );
       console.log('rrr =>', io.room);
+      console.log('NEW PLAYER IN THE GAME ', tableId);
       io.in(tableId).emit('newPlayer', updatedRoom);
     } else {
       socket.emit('actionError', { msg: 'Unable to Join' });
@@ -476,7 +479,7 @@ export const exitRoom = async (io, socket, data) => {
       leaveReq = [...roomdata.leaveReq];
       leaveReq.push(leaveUser.id);
       console.log({
-        condition: roomdata.hostId.toString() === userId.toString(),
+        isAdmin: roomdata.hostId.toString() === userId.toString(),
       });
       // if (roomdata.hostId.toString() === userId.toString()) {
       console.log('IN EXIT 4');
@@ -518,6 +521,7 @@ export const exitRoom = async (io, socket, data) => {
         console.log('HERE WORKD');
         socket.emit('exitSuccess');
         if (room && room.players.length) {
+          console.log('SEND ROOM DATA IF ANY OF THE PLAYER LEAVES');
           io.in(tableId).emit('updateRoom', room);
         } else {
           await roomModel.deleteOne({
@@ -1408,6 +1412,7 @@ export const leaveApiCall = async (room, userId) => {
 export const checkRoom = async (data, socket, io) => {
   try {
     const { tableId, userId, gameType, sitInAmount } = data;
+    console.log({ data });
     const userData = await userModel.findOne({ _id: convertMongoId(userId) });
     if (!userData) {
       socket.emit('redirectToClient');
@@ -1415,7 +1420,6 @@ export const checkRoom = async (data, socket, io) => {
     }
 
     const roomData = await roomModel.findOne({ tableId });
-    console.log({ roomData });
     const sitAmount = typeof sitInAmount === 'number' ? sitInAmount : 0;
     const payload = {
       user: {
@@ -1450,6 +1454,7 @@ export const checkRoom = async (data, socket, io) => {
       if (
         roomData.players.find((ele) => ele.id.toString() === userId.toString())
       ) {
+        console.log('USER IS ALREADY ON THE TABLE');
         socket.join(tableId);
         addNewuserToIo(io, socket, userId, tableId);
         io.in(tableId).emit('updateRoom', roomData);
@@ -1461,6 +1466,7 @@ export const checkRoom = async (data, socket, io) => {
       //   return;
       // }
       // join the user in the game
+      console.log('NEW USER JOIN TO THE TABLE');
       joinGame(io, socket, payload);
     } else {
       // if there is no userid and user in some other games so we will redirect user
