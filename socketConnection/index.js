@@ -137,16 +137,25 @@ const socketConnection = (io) => {
           socket.customRoom
         );
 
+        if (!socket.customId || !socket.customRoom) {
+          return;
+        }
+
         const lastSockets = io.users;
+        console.log({ lastSockets });
         let filteredSockets = lastSockets.filter(
-          (el) => el === socket.customId
+          (el) => el.toString() === socket.customId.toString()
         );
         console.log({ filteredSockets });
         const roomid = io.room;
-        let filteredRoom = roomid.filter((el) => el.room === socket.customRoom);
+        console.log({ roomid });
+        let filteredRoom = roomid.filter(
+          (el) => el.room.toString() === socket.customRoom.toString()
+        );
         console.log({ filteredRoom });
         if (filteredSockets.length > 0 && filteredRoom.length > 0) {
-          let indexUser = lastSockets.indexOf(socket.customId);
+          let indexUser = lastSockets.indexOf(socket.customId.toString());
+          console.log({ indexUser });
           if (indexUser !== -1) lastSockets.splice(indexUser, 1);
 
           io.users = lastSockets;
@@ -185,7 +194,7 @@ const socketConnection = (io) => {
               console.log('exit room called after 300000 milli sec');
               await exitRoom(io, socket, dd);
             }
-          }, 120000);
+          }, 12000);
         } else {
           console.log('FAILED TO COMPLETE DISCONNECT PART');
         }

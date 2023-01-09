@@ -290,7 +290,6 @@ app.get('/getUserForInvite/:tableId', async (req, res) => {
 
 app.get('/getRunningGame', async (req, res) => {
   const blackjackRooms = await roomModel.find({ public: true, finish: false });
-  console.log({ blackjackRooms });
   res.status(200).send({ rooms: blackjackRooms });
 });
 
