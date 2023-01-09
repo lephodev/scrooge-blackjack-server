@@ -282,7 +282,7 @@ export const naturals = async (players) => {
         pl[i].blackjack = true;
         pl[i].sum = 21;
         // Multiply player bet by 1.5 (this is the 3:2 ratio)
-        pl[i].wallet = pl[i].wallet + (1.5 * pl[i].betAmount + pl[i].betAmount);
+        // pl[i].wallet = pl[i].wallet + (1.5 * pl[i].betAmount + pl[i].betAmount);
         pl[i].hasAce = true;
         pl[i].turn = false;
         pl[(i + 1) % pl.length].turn = true;
@@ -372,11 +372,11 @@ export const hitAction = async (io, socket, data) => {
         await compareSum(io, data, room);
       }
     } else {
-      const r = await roomModel.findOne({ tableId: room.tableId });
+      const r = await roomModel.findOne({ tableId: tableId });
       io.in(tableId).emit('updateRoom', r);
     }
     console.log('ID HERE ', room);
-    const r = await roomModel.findOne({ tableId: room.tableId });
+    const r = await roomModel.findOne({ tableId: tableId });
     let p = r.players.find((el) => el.id.toString() === userId.toString());
     return p;
   } catch (error) {
@@ -1221,20 +1221,26 @@ const finalCompareGo = async (io, data) => {
           }
           players[i].splitSum[j] = sum;
           if (sum > 21) {
+            // Devide betAmount by half because when there split so there is two bet of 10 and 10 so the total bet amount is 20
+            // and in below scenario the user lost only one split round so this means he loss only 10
+            // so what we do we devide the total betAmount by half so we can get current split card loss amount
             players[i].hands.push({
-              amount: player.betAmount,
+              amount: player.betAmount / 2,
               action: 'game-lose',
               date: new Date(),
               isWatcher: false,
             });
           } else if (sum <= 21 && sum > dealer.sum) {
+            // Devide betAmount by half because when there split so there is two bet of 10 and 10 so the total bet amount is 20
+            // and in below scenario the user win only one split round so this means he win total 20
+            // so what we do we put the actual betAmount because 10 * 2 will be 20
             players[i].hands.push({
               amount: player.betAmount,
               isWatcher: false,
               action: 'game-win',
               date: new Date(),
             });
-            players[i].wallet = player.wallet + player.betAmount * 2;
+            // players[i].wallet = player.wallet + player.betAmount * 2;
             winners.push({
               id: player.id,
               name: player.name,
@@ -1249,7 +1255,8 @@ const finalCompareGo = async (io, data) => {
               action: 'game-draw',
               date: new Date(),
             });
-            players[i].wallet = player.wallet + player.betAmount;
+            // Because game is draw so it will be not add on in the ticket so Reverting back the winAmount to the user to play
+            players[i].wallet = player.wallet + player.betAmount / 2;
             draw.push({
               id: player.id,
               name: player.name,
@@ -1262,7 +1269,7 @@ const finalCompareGo = async (io, data) => {
               action: 'game-win',
               date: new Date(),
             });
-            players[i].wallet = player.wallet + player.betAmount * 2;
+            // players[i].wallet = player.wallet + player.betAmount * 2;
             winners.push({
               id: player.id,
               name: player.name,
@@ -1272,7 +1279,7 @@ const finalCompareGo = async (io, data) => {
             });
           } else if (sum < dealer.sum && dealer.sum <= 21) {
             players[i].hands.push({
-              amount: player.betAmount,
+              amount: player.betAmount / 2,
               isWatcher: false,
               action: 'game-lose',
               date: new Date(),
@@ -1291,7 +1298,7 @@ const finalCompareGo = async (io, data) => {
         if (player.isSurrender) {
           players[i].hands.push({
             isWatcher: false,
-            amount: player.betAmount / 2,
+            amount: player.betAmount,
             action: 'game-lose',
             date: new Date(),
           });
@@ -1300,7 +1307,7 @@ const finalCompareGo = async (io, data) => {
         if (player.blackjack) {
           players[i].hands.push({
             isWatcher: false,
-            amount: player.betAmount * 1.5,
+            amount: player.betAmount * 1.5 + player.betAmount,
             action: 'game-win',
             date: new Date(),
           });
@@ -1321,11 +1328,11 @@ const finalCompareGo = async (io, data) => {
         } else if (sum <= 21 && sum > dealer.sum) {
           players[i].hands.push({
             isWatcher: false,
-            amount: player.betAmount,
+            amount: player.betAmount * 2,
             action: 'game-win',
             date: new Date(),
           });
-          players[i].wallet = player.wallet + player.betAmount * 2;
+          // players[i].wallet = player.wallet + player.betAmount * 2;
           winners.push({
             id: player.id,
             name: player.name,
@@ -1340,6 +1347,7 @@ const finalCompareGo = async (io, data) => {
             action: 'game-draw',
             date: new Date(),
           });
+          // In case of draw revert the bet amount
           players[i].wallet = player.wallet + player.betAmount;
           draw.push({
             id: player.id,
@@ -1348,12 +1356,12 @@ const finalCompareGo = async (io, data) => {
           });
         } else if (dealer.sum > 21 && sum <= 21) {
           players[i].hands.push({
-            amount: player.betAmount,
+            amount: player.betAmount * 2,
             isWatcher: false,
             action: 'game-win',
             date: new Date(),
           });
-          players[i].wallet = player.wallet + player.betAmount * 2;
+          // players[i].wallet = player.wallet + player.betAmount * 2;
           winners.push({
             id: player.id,
             name: player.name,
@@ -1371,7 +1379,6 @@ const finalCompareGo = async (io, data) => {
         }
       }
     });
-    console.log('final compare time');
     if (winners.length) handWinner.push(winners);
     await roomModel.updateOne(
       { tableId },

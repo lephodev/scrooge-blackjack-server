@@ -328,6 +328,21 @@ export const bet = async (io, socket, data) => {
   try {
     // check game is exist and user is in the game
     let { roomId, userId, betAmount } = data;
+
+    if (!betAmount) {
+      socket.emit('actionError', {
+        msg: 'Enter bet amount',
+      });
+      return;
+    }
+
+    if (parseFloat(betAmount) < 10) {
+      socket.emit('actionError', {
+        msg: 'Minimum bet amount is 10.',
+      });
+      return;
+    }
+
     userId = convertMongoId(userId);
     console.log({ roomId, userId, betAmount });
     if (roomId && userId) {
@@ -602,8 +617,15 @@ export const confirmBet = async (io, socket, data) => {
     const player = room.players.find(
       (el) => el.id.toString() === userId.toString()
     );
-    console.log('GOT player DATA', !!player);
+    console.log('GOT player DATA', player);
     if (player && room) {
+      if (player.betAmount < 10 || !player.betAmount) {
+        socket.emit('actionError', {
+          msg: 'Bet amount should be more then 10',
+        });
+        return;
+      }
+
       await roomModel.updateOne(
         { $and: [{ tableId }, { players: { $elemMatch: { id: userId } } }] },
         {
@@ -1167,8 +1189,9 @@ export const finishHandApiCall = async (room) => {
 };
 
 const userTotalWinAmount = (coinsBeforeJoin, hands, userId, roomId) => {
-  let userBalanceNow = 0;
-  userBalanceNow = coinsBeforeJoin;
+  // Wallet balance which user comes with to play the game
+  let userBalanceNow = coinsBeforeJoin;
+  let totalTicketsWin = 0;
   const transactions = [];
   let stats = { win: 0, loss: 0, totalWinAmount: 0, totalLossAmount: 0 };
 
@@ -1179,11 +1202,6 @@ const userTotalWinAmount = (coinsBeforeJoin, hands, userId, roomId) => {
       userId,
       roomId,
       amount: action === 'game-lose' ? -amount : amount,
-      prevWallet: userBalanceNow,
-      updatedWallet:
-        action === 'game-lose'
-          ? userBalanceNow - amount
-          : userBalanceNow + amount,
       transactionDetails: {},
       transactionType: 'blackjack',
     });
@@ -1203,7 +1221,9 @@ const userTotalWinAmount = (coinsBeforeJoin, hands, userId, roomId) => {
         win: stats.win + 1,
         totalWinAmount: stats.totalWinAmount + amount,
       };
-      userBalanceNow += amount;
+      // Because the amount will be increase in the ticket thats why we are decreasing the
+      userBalanceNow -= amount;
+      totalTicketsWin += amount;
     }
   });
   return {
@@ -1211,6 +1231,7 @@ const userTotalWinAmount = (coinsBeforeJoin, hands, userId, roomId) => {
     transactions,
     stats,
     shouldUpdateStats: Object.values(stats).some((el) => el > 0),
+    totalTicketsWin,
   };
 };
 
@@ -1285,14 +1306,21 @@ export const leaveApiCall = async (room, userId) => {
       let userTransaction = [];
       let statsData = {};
       let canUpdateStats = false;
+      let totalWinningTickets = 0;
       if (leavingUserData) {
-        const { userBalanceNow, transactions, stats, shouldUpdateStats } =
-          userTotalWinAmount(
-            leavingUserData.coinsBeforeJoin,
-            leavingUserData.hands,
-            userId,
-            room.tableId
-          );
+        const {
+          userBalanceNow,
+          transactions,
+          stats,
+          shouldUpdateStats,
+          totalTicketsWin,
+        } = userTotalWinAmount(
+          leavingUserData.coinsBeforeJoin,
+          leavingUserData.hands,
+          userId,
+          room.tableId
+        );
+        totalWinningTickets = totalTicketsWin;
         userTransaction = [...transactions];
         userTotalWin = userBalanceNow;
         statsData = { ...stats };
@@ -1306,11 +1334,7 @@ export const leaveApiCall = async (room, userId) => {
       }
       await User.updateOne(
         { _id: convertMongoId(userId) },
-        {
-          $inc: {
-            wallet: userTotalWin,
-          },
-        }
+        { $inc: { wallet: userTotalWin, ticket: totalWinningTickets } }
       );
       if (canUpdateStats) {
         await rankModel.updateOne(
@@ -1336,18 +1360,23 @@ export const leaveApiCall = async (room, userId) => {
       let allTransactions = [];
       let statsPromise = [];
       payload.users.forEach((elUser) => {
-        const { userBalanceNow, transactions, stats, shouldUpdateStats } =
-          userTotalWinAmount(
-            elUser.coinsBeforeJoin,
-            elUser.hands,
-            elUser.uid,
-            room.tableId
-          );
+        const {
+          userBalanceNow,
+          transactions,
+          stats,
+          shouldUpdateStats,
+          totalTicketsWin,
+        } = userTotalWinAmount(
+          elUser.coinsBeforeJoin,
+          elUser.hands,
+          elUser.uid,
+          room.tableId
+        );
         allTransactions = [...allTransactions, ...transactions];
         userWinPromise.push(
           User.updateOne(
             { _id: convertMongoId(elUser.uid) },
-            { $inc: { wallet: userBalanceNow } }
+            { $inc: { wallet: userBalanceNow, ticket: totalTicketsWin } }
           )
         );
         if (shouldUpdateStats) {
