@@ -1196,7 +1196,7 @@ const userTotalWinAmount = (coinsBeforeJoin, hands, userId, roomId) => {
   let stats = { win: 0, loss: 0, totalWinAmount: 0, totalLossAmount: 0 };
 
   hands.forEach((elHand) => {
-    const { action, amount } = elHand;
+    const { action, amount, betAmount } = elHand;
 
     transactions.push({
       userId,
@@ -1207,13 +1207,14 @@ const userTotalWinAmount = (coinsBeforeJoin, hands, userId, roomId) => {
     });
 
     if (action === 'game-lose') {
-      userBalanceNow -= amount;
+      userBalanceNow -= betAmount;
       stats = {
         ...stats,
         loss: stats.loss + 1,
         totalLossAmount: stats.totalLossAmount + amount,
       };
     } else if (action === 'game-draw') {
+      // Because in draw case the amount will be no amount be deduct or increase
       userBalanceNow -= amount;
     } else if (action === 'game-win') {
       stats = {
@@ -1222,7 +1223,7 @@ const userTotalWinAmount = (coinsBeforeJoin, hands, userId, roomId) => {
         totalWinAmount: stats.totalWinAmount + amount,
       };
       // Because the amount will be increase in the ticket thats why we are decreasing the
-      userBalanceNow -= amount;
+      userBalanceNow -= betAmount;
       totalTicketsWin += amount;
     }
   });

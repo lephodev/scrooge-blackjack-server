@@ -1229,6 +1229,7 @@ const finalCompareGo = async (io, data) => {
               action: 'game-lose',
               date: new Date(),
               isWatcher: false,
+              betAmount: player.betAmount,
             });
           } else if (sum <= 21 && sum > dealer.sum) {
             // Devide betAmount by half because when there split so there is two bet of 10 and 10 so the total bet amount is 20
@@ -1239,6 +1240,7 @@ const finalCompareGo = async (io, data) => {
               isWatcher: false,
               action: 'game-win',
               date: new Date(),
+              betAmount: player.betAmount,
             });
             // players[i].wallet = player.wallet + player.betAmount * 2;
             winners.push({
@@ -1254,6 +1256,7 @@ const finalCompareGo = async (io, data) => {
               isWatcher: false,
               action: 'game-draw',
               date: new Date(),
+              betAmount: player.betAmount,
             });
             // Because game is draw so it will be not add on in the ticket so Reverting back the winAmount to the user to play
             players[i].wallet = player.wallet + player.betAmount / 2;
@@ -1268,6 +1271,7 @@ const finalCompareGo = async (io, data) => {
               isWatcher: false,
               action: 'game-win',
               date: new Date(),
+              betAmount: player.betAmount,
             });
             // players[i].wallet = player.wallet + player.betAmount * 2;
             winners.push({
@@ -1283,6 +1287,7 @@ const finalCompareGo = async (io, data) => {
               isWatcher: false,
               action: 'game-lose',
               date: new Date(),
+              betAmount: player.betAmount,
             });
           }
         });
@@ -1301,6 +1306,7 @@ const finalCompareGo = async (io, data) => {
             amount: player.betAmount,
             action: 'game-lose',
             date: new Date(),
+            betAmount: player.betAmount,
           });
           return;
         }
@@ -1310,6 +1316,7 @@ const finalCompareGo = async (io, data) => {
             amount: player.betAmount * 1.5 + player.betAmount,
             action: 'game-win',
             date: new Date(),
+            betAmount: player.betAmount,
           });
           winners.push({
             id: player.id,
@@ -1324,6 +1331,7 @@ const finalCompareGo = async (io, data) => {
             action: 'game-lose',
             date: new Date(),
             isWatcher: false,
+            betAmount: player.betAmount,
           });
         } else if (sum <= 21 && sum > dealer.sum) {
           players[i].hands.push({
@@ -1331,6 +1339,7 @@ const finalCompareGo = async (io, data) => {
             amount: player.betAmount * 2,
             action: 'game-win',
             date: new Date(),
+            betAmount: player.betAmount,
           });
           // players[i].wallet = player.wallet + player.betAmount * 2;
           winners.push({
@@ -1346,6 +1355,7 @@ const finalCompareGo = async (io, data) => {
             isWatcher: false,
             action: 'game-draw',
             date: new Date(),
+            betAmount: player.betAmount,
           });
           // In case of draw revert the bet amount
           players[i].wallet = player.wallet + player.betAmount;
@@ -1360,6 +1370,7 @@ const finalCompareGo = async (io, data) => {
             isWatcher: false,
             action: 'game-win',
             date: new Date(),
+            betAmount: player.betAmount,
           });
           // players[i].wallet = player.wallet + player.betAmount * 2;
           winners.push({
@@ -1375,6 +1386,7 @@ const finalCompareGo = async (io, data) => {
             action: 'game-lose',
             date: new Date(),
             isWatcher: false,
+            betAmount: player.betAmount,
           });
         }
       }
