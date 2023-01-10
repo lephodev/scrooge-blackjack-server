@@ -1497,6 +1497,17 @@ export const checkRoom = async (data, socket, io) => {
       // }
       // join the user in the game
       console.log('NEW USER JOIN TO THE TABLE');
+
+      if (
+        !sitAmount ||
+        sitInAmount < 100 ||
+        sitAmount > userData.wallet ||
+        !/^\d+$/.test(sitInAmount)
+      ) {
+        socket.emit('redirectToClient');
+        return;
+      }
+
       joinGame(io, socket, payload);
     } else {
       // if there is no userid and user in some other games so we will redirect user
