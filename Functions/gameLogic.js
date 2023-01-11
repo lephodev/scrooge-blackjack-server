@@ -95,10 +95,17 @@ export const playerTurnTimer = async (io, data) => {
   try {
     const { tableId } = data;
     const room = await roomModel.findOne({ tableId, gamestart: true });
+    console.log('PLAYERS ==> ', JSON.stringify(room.players));
     let currentPlayer = room.players.find((el) => el.turn && el.action === '');
     let currentPlayerIndex = room.players.findIndex(
       (el) => el.turn && el.action === ''
     );
+    console.log('player turn timer', { currentPlayer });
+    if (currentPlayerIndex === -1) {
+      dealerTurn(io, data);
+      return;
+    }
+
     let time = room.timer;
     let interval = setInterval(async () => {
       if (time > 0) {
@@ -219,7 +226,12 @@ export const nextPlayerTurn = async (
     });
     console.log('nextPlayer turn =>', currentPlayerIndex);
     let players = room?.players;
-    if (!isLeave && players[currentPlayerIndex]) {
+    if (
+      !isLeave &&
+      players.length &&
+      currentPlayerIndex >= 0 &&
+      players[currentPlayerIndex]
+    ) {
       players[currentPlayerIndex].turn = false;
       players[currentPlayerIndex].action = 'stand';
     } else {
@@ -360,7 +372,6 @@ export const hitAction = async (io, socket, data) => {
         { players: { $elemMatch: { $and: [{ id: userId }, { turn: true }] } } },
       ],
     });
-    console.log({ room });
     if (room) {
       let player = room.players.find(
         (el) => el.id.toString() === userId.toString()
@@ -375,7 +386,6 @@ export const hitAction = async (io, socket, data) => {
       const r = await roomModel.findOne({ tableId: tableId });
       io.in(tableId).emit('updateRoom', r);
     }
-    console.log('ID HERE ', room);
     const r = await roomModel.findOne({ tableId: tableId });
     let p = r.players.find((el) => el.id.toString() === userId.toString());
     return p;
