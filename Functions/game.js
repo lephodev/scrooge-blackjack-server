@@ -1449,6 +1449,8 @@ export const checkRoom = async (data, socket, io) => {
       return;
     }
 
+    console.log({ userData });
+
     const roomData = await roomModel.findOne({ tableId });
     const sitAmount = typeof sitInAmount === 'number' ? sitInAmount : 0;
     const payload = {
