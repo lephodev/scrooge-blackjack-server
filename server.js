@@ -21,6 +21,8 @@ import Token from './landing-server/models/Token.model.js';
 import Message from './modals/messageModal.js';
 import Notification from './modals/NotificationModal.js';
 
+const convertMongoId = (id) => mongoose.Types.ObjectId(id);
+
 dotenv.config();
 const app = express();
 mongoConnect();
@@ -330,7 +332,7 @@ app.post('/createTable', auth(), async (req, res) => {
     const { username, wallet, email, _id, avatar } = req.user;
     let valid = true;
     let err = {};
-    const mimimumBet = 100;
+    const mimimumBet = 10;
     if (!gameName) {
       err.gameName = 'Game name is required.';
       valid = false;
@@ -374,6 +376,7 @@ app.post('/createTable', auth(), async (req, res) => {
           cards: [],
           coinsBeforeStart: parseFloat(sitInAmount),
           avatar: avatar,
+          photoURI: req.user.profile,
           id: _id,
           betAmount: 0,
           isPlaying: false,
@@ -415,6 +418,8 @@ app.post('/createTable', auth(), async (req, res) => {
       },
     });
 
+    console.log(JSON.stringify(newRoom.players));
+    console.log('Usser --> ', req.user);
     await User.updateOne({ _id }, { wallet: wallet - sitInAmount });
 
     if (Array.isArray(invitetedPlayerUserId) && invitetedPlayerUserId.length) {
@@ -462,6 +467,61 @@ app.get('/check-auth', auth(), async (req, res) => {
     res.status(200).send({ user: req.user });
   } catch (error) {
     res.status(500).send({ message: 'Internal server error' });
+  }
+});
+
+app.post('/refillWallet', auth(), async (req, res) => {
+  try {
+    const user = req.user;
+    let { tableId, amount } = req.body;
+
+    if (!tableId || !amount) {
+      return res.status(403).send({ msg: 'Invalid data' });
+    }
+
+    amount = parseInt(amount);
+
+    if (amount > user.wallet) {
+      return res
+        .status(403)
+        .send({ msg: 'You dont have balance in your wallet' });
+    }
+
+    await roomModel.updateOne(
+      {
+        $and: [
+          { tableId },
+          { players: { $elemMatch: { id: convertMongoId(user.id) } } },
+        ],
+      },
+      {
+        $inc: {
+          'players.$.wallet': amount,
+          'players.$.coinsBeforeStart': amount,
+        },
+      }
+    );
+
+    const roomData = await roomModel.findOne({
+      $and: [
+        { tableId },
+        { players: { $elemMatch: { id: convertMongoId(user.id) } } },
+      ],
+    });
+
+    if (roomData) {
+      io.in(tableId).emit('updateRoom', roomData);
+    }
+
+    await User.updateOne(
+      { _id: convertMongoId(user.id) },
+      { $inc: { wallet: -amount } }
+    );
+
+    res.status(200).send({ msg: 'Success' });
+  } catch (error) {
+    res.status(500).send({ msg: 'Internel server error' });
+    console.log(error);
   }
 });
 
