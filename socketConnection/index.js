@@ -1,11 +1,9 @@
-import { getDoc, getUserId } from '../firestore/dbFetch.js';
+import { getDoc, getUserId } from "../firestore/dbFetch.js";
 import {
   addBuyCoins,
   bet,
-  checkForTable,
   clearBet,
   confirmBet,
-  createNewGame,
   exitRoom,
   checkRoom,
   InvitePlayers,
@@ -15,123 +13,123 @@ import {
   rejoinGame,
   startPreGameTimer,
   makeSliderBet,
-} from '../Functions/game.js';
+} from "../Functions/game.js";
 import {
   doubleAction,
   hitAction,
   splitAction,
   standAction,
   surrender,
-} from '../Functions/gameLogic.js';
-import roomModel from '../modals/roomModal.js';
-import { guid } from './utils.js';
+} from "../Functions/gameLogic.js";
+import roomModel from "../modals/roomModal.js";
+import { guid } from "./utils.js";
 
 const socketConnection = (io) => {
   io.users = [];
   io.room = [];
-  io.on('connection', (socket) => {
-    socket.on('checkTable', async (data) => {
+  io.on("connection", (socket) => {
+    socket.on("checkTable", async (data) => {
       await checkRoom(data, socket, io);
     });
 
     // user bet
-    socket.on('bet', async (data) => {
+    socket.on("bet", async (data) => {
       await bet(io, socket, data);
     });
 
     // user bet with slider
-    socket.on('makeSliderBet', async (data) => {
+    socket.on("makeSliderBet", async (data) => {
       await makeSliderBet(io, socket, data);
     });
 
     // clear user bet
-    socket.on('clearbet', async (data) => {
+    socket.on("clearbet", async (data) => {
       await clearBet(io, socket, data);
     });
 
     // reconnect to server
-    socket.on('join', async (data) => {
+    socket.on("join", async (data) => {
       await rejoinGame(io, socket, data);
     });
 
-    socket.on('confirmBet', async (data) => {
+    socket.on("confirmBet", async (data) => {
       await confirmBet(io, socket, data);
     });
 
     // player action socket
-    socket.on('hit', async (data) => {
+    socket.on("hit", async (data) => {
       const p = await hitAction(io, socket, data);
-      io.in(data.tableId).emit('action', {
-        type: 'hit',
+      io.in(data.tableId).emit("action", {
+        type: "hit",
       });
       if (p.isBusted) {
         setTimeout(() => {
-          io.in(data.tableId).emit('action', {
-            type: 'burst',
+          io.in(data.tableId).emit("action", {
+            type: "burst",
           });
         }, 500);
       }
     });
 
-    socket.on('stand', async (data) => {
+    socket.on("stand", async (data) => {
       await standAction(io, socket, data);
-      io.in(data.tableId).emit('action', {
-        type: 'stand',
+      io.in(data.tableId).emit("action", {
+        type: "stand",
       });
     });
 
-    socket.on('double', async (data) => {
+    socket.on("double", async (data) => {
       const p = await doubleAction(io, socket, data);
-      io.in(data.tableId).emit('action', {
-        type: 'doubleDown',
+      io.in(data.tableId).emit("action", {
+        type: "doubleDown",
       });
       if (p.isBusted) {
         setTimeout(() => {
-          io.in(data.tableId).emit('action', {
-            type: 'burst',
+          io.in(data.tableId).emit("action", {
+            type: "burst",
           });
         }, 500);
       }
     });
 
-    socket.on('split', async (data) => {
+    socket.on("split", async (data) => {
       await splitAction(io, socket, data);
-      io.in(data.tableId).emit('action', {
-        type: 'split',
+      io.in(data.tableId).emit("action", {
+        type: "split",
       });
     });
 
-    socket.on('surrender', async (data) => {
+    socket.on("surrender", async (data) => {
       await surrender(io, socket, data);
-      io.in(data.tableId).emit('action', {
-        type: 'surrender',
+      io.in(data.tableId).emit("action", {
+        type: "surrender",
       });
     });
 
-    socket.on('invPlayers', async (data) => {
+    socket.on("invPlayers", async (data) => {
       await InvitePlayers(io, socket, data);
     });
 
     // exit room
-    socket.on('exitRoom', async (data) => {
+    socket.on("exitRoom", async (data) => {
       await exitRoom(io, socket, data);
     });
 
     // add more coins
-    socket.on('addCoins', async (data) => {
+    socket.on("addCoins", async (data) => {
       await addBuyCoins(io, socket, data);
     });
 
     // chat in game
-    socket.on('chatMessage', (data) => {
-      io.in(data.tableId.toString()).emit('newMessage', data);
+    socket.on("chatMessage", (data) => {
+      io.in(data.tableId.toString()).emit("newMessage", data);
     });
 
     // disconnect from server
-    socket.on('disconnect', () => {
+    socket.on("disconnect", () => {
       try {
         console.log(
-          'disconnected',
+          "disconnected",
           socket.id,
           socket.customId,
           socket.customRoom
@@ -168,14 +166,14 @@ const socketConnection = (io) => {
 
           setTimeout(async () => {
             let dd = { ...data };
-            console.log('---- INSIDE SOCKET ----');
-            console.log('IO USERS => ', JSON.stringify(io.users));
-            console.log('USERSID => ', JSON.stringify(data));
+            console.log("---- INSIDE SOCKET ----");
+            console.log("IO USERS => ", JSON.stringify(io.users));
+            console.log("USERSID => ", JSON.stringify(data));
 
             if (
               io.users.find((ele) => ele.toString() === dd?.userId?.toString())
             ) {
-              console.log('reconnected =>', dd);
+              console.log("reconnected =>", dd);
               await roomModel.updateOne(
                 {
                   $and: [
@@ -191,15 +189,15 @@ const socketConnection = (io) => {
               );
               return;
             } else {
-              console.log('exit room called after 300000 milli sec');
+              console.log("exit room called after 300000 milli sec");
               await exitRoom(io, socket, dd);
             }
           }, 12000);
         } else {
-          console.log('FAILED TO COMPLETE DISCONNECT PART');
+          console.log("FAILED TO COMPLETE DISCONNECT PART");
         }
       } catch (e) {
-        console.log('error in disconnect block', e);
+        console.log("error in disconnect block", e);
       }
     });
   });
