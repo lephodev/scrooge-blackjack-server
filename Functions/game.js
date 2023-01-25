@@ -471,7 +471,6 @@ export const exitRoom = async (io, socket, data) => {
         ],
       })
       .lean();
-    console.log({ roomdata });
     if (roomdata && roomdata.players.length <= 1) {
       console.log("IF ! 1");
       const res = await leaveApiCall(roomdata);
@@ -493,7 +492,7 @@ export const exitRoom = async (io, socket, data) => {
       let leaveUser = roomdata.players.find(
         (el) => el.id.toString() === userId.toString()
       );
-      console.log("IN EXIT ROOM 3", { newAdmin, leaveUser });
+      console.log("IN EXIT ROOM 3");
       leaveReq = [...roomdata.leaveReq];
       leaveReq.push(leaveUser.id);
       console.log({
@@ -513,7 +512,6 @@ export const exitRoom = async (io, socket, data) => {
         },
         leaveUser.id
       );
-      console.log({ res });
       const leave = await roomModel.findOneAndUpdate(
         {
           tableId,
@@ -525,18 +523,21 @@ export const exitRoom = async (io, socket, data) => {
               : roomdata.hostId,
           leaveReq,
           $pull: {
-            players: userId,
+            players: convertMongoId(userId),
           },
         }
       );
 
-      console.log({ leave });
+      // console.log({ leave });
 
       if (leave) {
         const room = await roomModel.findOne({
           $and: [{ tableId }],
         });
-        console.log("HERE WORKD");
+        console.log(
+          "HERE WORKD",
+          JSON.stringify(room.players.find((el) => el.id.toString() === userId))
+        );
         socket.emit("exitSuccess");
         if (room && room.players.length) {
           console.log("SEND ROOM DATA IF ANY OF THE PLAYER LEAVES");
@@ -1256,7 +1257,7 @@ export const leaveApiCall = async (room, userId) => {
       url = "https://leave-tab-v2-posthand-all-t3e66zpola-uc.a.run.app/"; // for all user leave after playing any hand
     }
     let allUsers = player.concat(room.watchers);
-    console.log("users =>", allUsers, userId);
+    // console.log("users =>", allUsers, userId);
     if (userId) {
       allUsers = allUsers.filter(
         (ele) => ele.id.toString() === userId.toString()
@@ -1264,34 +1265,73 @@ export const leaveApiCall = async (room, userId) => {
     }
     let users = [];
 
-    allUsers.forEach((item) => {
-      console.log("handss =>", item.hands);
-      let hands = item.hands ? [...item.hands] : [];
+    if (userId) {
+      const getUser = allUsers.find((el) =>
+        el.id
+          ? el.id.toString() === userId.toString()
+          : el.userid.toString() === userId.toString()
+      );
+
+      if (!getUser) {
+        return false;
+      }
+      let uid = getUser.id ? getUser.id : getUser.userid;
+      let hands = getUser.hands ? [...getUser.hands] : [];
       if (room.gamestart) {
         hands.push({
           action: "game-lose",
-          amount: item.betAmount,
+          betAmount: getUser.betAmount,
           date: new Date(),
-          isWatcher: room.watchers.find((ele) => ele.userid === uid)
+          isWatcher: room.watchers.find(
+            (ele) => ele.userid.toString() === uid.toString()
+          )
             ? true
             : false,
         });
       }
-      let uid = item.id ? item.id : item.userid;
       users.push({
         uid,
         hands,
-        // hands: url === 'https://leave-tab-v2-posthand-all-t3e66zpola-uc.a.run.app/'
-        //   ? []
-        //   : hands,
-        coinsBeforeJoin: item.coinsBeforeStart,
+        coinsBeforeJoin: getUser.coinsBeforeStart,
         gameLeaveAt: new Date(),
-        gameJoinedAt: item.gameJoinedAt,
-        isWatcher: room.watchers.find((ele) => ele.userid === uid)
+        gameJoinedAt: getUser.gameJoinedAt,
+        isWatcher: room.watchers.find(
+          (ele) => ele.userid.toString() === uid.toString()
+        )
           ? true
           : false,
       });
-    });
+    } else {
+      allUsers.forEach((item) => {
+        console.log("handss =>", item.hands);
+        let hands = item.hands ? [...item.hands] : [];
+        if (room.gamestart) {
+          hands.push({
+            action: "game-lose",
+            betAmount: item.betAmount,
+            date: new Date(),
+            isWatcher: room.watchers.find((ele) => ele.userid === uid)
+              ? true
+              : false,
+          });
+        }
+        let uid = item.id ? item.id : item.userid;
+        users.push({
+          uid,
+          hands,
+          // hands: url === 'https://leave-tab-v2-posthand-all-t3e66zpola-uc.a.run.app/'
+          //   ? []
+          //   : hands,
+          coinsBeforeJoin: item.coinsBeforeStart,
+          gameLeaveAt: new Date(),
+          gameJoinedAt: item.gameJoinedAt,
+          isWatcher: room.watchers.find((ele) => ele.userid === uid)
+            ? true
+            : false,
+        });
+      });
+    }
+
     let payload = {
       mode: !room.gamestart ? "afterHand" : "duringHand",
       gameColl: room.gameType,
@@ -1301,118 +1341,114 @@ export const leaveApiCall = async (room, userId) => {
       users: users,
       adminUid: room.hostId,
     };
+    // if (userId) {
+    //   const leavingUserData = payload.users.find(
+    //     (el) => el.uid.toString() === userId.toString()
+    //   );
+    //   console.log({ payload: payload.users, leavingUserData });
+    //   let userTotalWin = 0;
+    //   let userTransaction = [];
+    //   let statsData = {};
+    //   let canUpdateStats = false;
+    //   let totalWinningTickets = 0;
+    //   if (leavingUserData) {
+    //     const {
+    //       userBalanceNow,
+    //       transactions,
+    //       stats,
+    //       shouldUpdateStats,
+    //       totalTicketsWin,
+    //     } = userTotalWinAmount(
+    //       leavingUserData.coinsBeforeJoin,
+    //       leavingUserData.hands,
+    //       userId,
+    //       room.tableId
+    //     );
+    //     totalWinningTickets = totalTicketsWin;
+    //     userTransaction = [...transactions];
+    //     userTotalWin = userBalanceNow;
+    //     statsData = { ...stats };
+    //     canUpdateStats = shouldUpdateStats;
+    //   }
 
-    if (userId) {
-      const leavingUserData = payload.users.find(
-        (el) => el.uid.toString() === userId.toString()
+    //   console.log(JSON.stringify(userTransaction));
+
+    //   if (userTransaction.length) {
+    //     await transactionModel.insertMany(userTransaction);
+    //   }
+    //   await User.updateOne(
+    //     { _id: convertMongoId(userId) },
+    //     { $inc: { wallet: userTotalWin, ticket: totalWinningTickets } }
+    //   );
+    //   if (canUpdateStats) {
+    //     await rankModel.updateOne(
+    //       {
+    //         userId: convertMongoId(userId),
+    //         gameName: "blackjack",
+    //       },
+    //       {
+    //         $inc: {
+    //           win: statsData.win,
+    //           loss: statsData.loss,
+    //           totalWinAmount: statsData.totalWinAmount,
+    //           totalLossAmount: statsData.totalLossAmount,
+    //         },
+    //       },
+    //       { upsert: true }
+    //     );
+    //   }
+
+    //   console.log({ userTotalWin });
+    // } else {
+    const userWinPromise = [];
+    let allTransactions = [];
+    let statsPromise = [];
+    payload.users.forEach((elUser) => {
+      const {
+        userBalanceNow,
+        transactions,
+        stats,
+        shouldUpdateStats,
+        totalTicketsWin,
+      } = userTotalWinAmount(
+        elUser.coinsBeforeJoin,
+        elUser.hands,
+        elUser.uid,
+        room.tableId
       );
-      let userTotalWin = 0;
-      let userTransaction = [];
-      let statsData = {};
-      let canUpdateStats = false;
-      let totalWinningTickets = 0;
-      if (leavingUserData) {
-        const {
-          userBalanceNow,
-          transactions,
-          stats,
-          shouldUpdateStats,
-          totalTicketsWin,
-        } = userTotalWinAmount(
-          leavingUserData.coinsBeforeJoin,
-          leavingUserData.hands,
-          userId,
-          room.tableId
-        );
-        totalWinningTickets = totalTicketsWin;
-        userTransaction = [...transactions];
-        userTotalWin = userBalanceNow;
-        statsData = { ...stats };
-        canUpdateStats = shouldUpdateStats;
-      }
-
-      console.log(JSON.stringify(userTransaction));
-
-      if (userTransaction.length) {
-        await transactionModel.insertMany(userTransaction);
-      }
-      await User.updateOne(
-        { _id: convertMongoId(userId) },
-        { $inc: { wallet: userTotalWin, ticket: totalWinningTickets } }
+      allTransactions = [...allTransactions, ...transactions];
+      userWinPromise.push(
+        User.updateOne(
+          { _id: convertMongoId(elUser.uid) },
+          { $inc: { wallet: userBalanceNow, ticket: totalTicketsWin } }
+        )
       );
-      if (canUpdateStats) {
-        await rankModel.updateOne(
-          {
-            userId: convertMongoId(userId),
-            gameName: "blackjack",
-          },
-          {
-            $inc: {
-              win: statsData.win,
-              loss: statsData.loss,
-              totalWinAmount: statsData.totalWinAmount,
-              totalLossAmount: statsData.totalLossAmount,
+      if (shouldUpdateStats) {
+        statsPromise.push(
+          rankModel.updateOne(
+            {
+              userId: convertMongoId(elUser.uid),
+              gameName: "blackjack",
             },
-          },
-          { upsert: true }
-        );
-      }
-
-      console.log({ userTotalWin });
-    } else {
-      const userWinPromise = [];
-      let allTransactions = [];
-      let statsPromise = [];
-      payload.users.forEach((elUser) => {
-        const {
-          userBalanceNow,
-          transactions,
-          stats,
-          shouldUpdateStats,
-          totalTicketsWin,
-        } = userTotalWinAmount(
-          elUser.coinsBeforeJoin,
-          elUser.hands,
-          elUser.uid,
-          room.tableId
-        );
-        allTransactions = [...allTransactions, ...transactions];
-        userWinPromise.push(
-          User.updateOne(
-            { _id: convertMongoId(elUser.uid) },
-            { $inc: { wallet: userBalanceNow, ticket: totalTicketsWin } }
+            {
+              $inc: {
+                win: stats.win,
+                loss: stats.loss,
+                totalWinAmount: stats.totalWinAmount,
+                totalLossAmount: stats.totalLossAmount,
+              },
+            },
+            { upsert: true }
           )
         );
-        if (shouldUpdateStats) {
-          statsPromise.push(
-            rankModel.updateOne(
-              {
-                userId: convertMongoId(elUser.uid),
-                gameName: "blackjack",
-              },
-              {
-                $inc: {
-                  win: stats.win,
-                  loss: stats.loss,
-                  totalWinAmount: stats.totalWinAmount,
-                  totalLossAmount: stats.totalLossAmount,
-                },
-              },
-              { upsert: true }
-            )
-          );
-        }
-        console.log({ userBalanceNow });
-      });
-      console.log(JSON.stringify(allTransactions));
-      await Promise.allSettled([
-        ...userWinPromise,
-        transactionModel.insertMany(allTransactions),
-        ...statsPromise,
-      ]);
-    }
-
-    console.log("payload =>", JSON.stringify(payload));
+      }
+    });
+    await Promise.allSettled([
+      ...userWinPromise,
+      transactionModel.insertMany(allTransactions),
+      ...statsPromise,
+    ]);
+    // }
 
     // const res = await axios.post(url, payload, {
     //   headers: {
@@ -1424,10 +1460,10 @@ export const leaveApiCall = async (room, userId) => {
     //   if (userId) {
 
     await roomModel.updateOne(
-      { _id: room._id, "players.id": userId },
+      { _id: room._id, "players.id": convertMongoId(userId) },
       {
         $pull: {
-          players: { id: userId },
+          players: { id: convertMongoId(userId) },
         },
       }
     );
