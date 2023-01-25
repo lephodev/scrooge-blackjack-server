@@ -167,7 +167,7 @@ const socketConnection = (io) => {
           setTimeout(async () => {
             let dd = { ...data };
             console.log("---- INSIDE SOCKET ----");
-            console.log("IO USERS => ", JSON.stringify(io.users));
+            // console.log("IO USERS => ", JSON.stringify(io.users));
             console.log("USERSID => ", JSON.stringify(data));
 
             if (
