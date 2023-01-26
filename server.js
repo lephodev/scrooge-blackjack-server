@@ -432,7 +432,7 @@ app.post("/createTable", auth(), async (req, res) => {
           return {
             sender: _id,
             receiver: el,
-            message: `<a href='${process.env.CLIENTURL}/table?tableid=${newRoom._id}&gamecollection=poker'>Click here</a> to play poker with me.`,
+            message: `<a href='${process.env.CLIENTURL}/game?gameCollection=Blackjack_Tables&tableid=${newRoom._id}'>Click here</a> to play blackjack with me.`,
           };
         }),
       ];
@@ -442,8 +442,8 @@ app.post("/createTable", auth(), async (req, res) => {
           return {
             sender: _id,
             receiver: el,
-            message: `has invited you to play poker.`,
-            url: `${process.env.CLIENTURL}/table?tableid=${newRoom._id}&gamecollection=poker`,
+            message: `has invited you to play blackjack.`,
+            url: `${process.env.CLIENTURL}/game?gameCollection=Blackjack_Tables&tableid=${newRoom._id}`,
           };
         }),
       ];

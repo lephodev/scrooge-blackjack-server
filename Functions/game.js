@@ -1092,7 +1092,7 @@ export const InvitePlayers = async (io, socket, data) => {
           return {
             sender: data.userId,
             receiver: el,
-            message: `<a href='${process.env.CLIENTURL}?tableid=${data.tableId}&gameCollection=Blackjack_Tables'>Click here</a> to play blackjack with me.`,
+            message: `<a href='${process.env.CLIENTURL}/game?gameCollection=Blackjack_Tables&tableid=${data.tableId}'>Click here</a> to play blackjack with me.`,
           };
         }),
       ];
@@ -1103,7 +1103,7 @@ export const InvitePlayers = async (io, socket, data) => {
             sender: data.userId,
             receiver: el,
             message: `has invited you to play blackjack.`,
-            url: `${process.env.CLIENTURL}?tableid=${data.tableId}&gameCollection=Blackjack_Tables`,
+            url: `${process.env.CLIENTURL}/game?gameCollection=Blackjack_Tables&tableid=${data.tableId}`,
           };
         }),
       ];
