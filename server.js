@@ -465,7 +465,7 @@ app.get("/check-auth", auth(), async (req, res) => {
     const checkTokenExists = await Token.findOne({ token });
 
     if (!checkTokenExists) {
-      return res.status(500).send({ message: "Token not exists." });
+      return res.status(403).send({ message: "Token not exists." });
     }
 
     res.status(200).send({ user: req.user });
