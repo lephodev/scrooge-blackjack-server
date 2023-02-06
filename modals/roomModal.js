@@ -1,5 +1,5 @@
 //imports
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 
 const Schema = mongoose.Schema;
 
@@ -34,13 +34,14 @@ const roomSchema = new Schema({
     type: Date,
     default: Date.now(),
   },
+  chats: [],
 });
 
-roomSchema.pre('save', function (next) {
+roomSchema.pre("save", function (next) {
   this.tableId = this._id.toString();
   next();
 });
 
-const roomModel = mongoose.model('blackjackroom', roomSchema);
+const roomModel = mongoose.model("blackjackroom", roomSchema);
 
 export default roomModel;
