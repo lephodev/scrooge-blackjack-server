@@ -13,6 +13,9 @@ import {
   rejoinGame,
   startPreGameTimer,
   makeSliderBet,
+  updateChat,
+  updateSeenBy,
+  typingonChat,
 } from "../Functions/game.js";
 import {
   doubleAction,
@@ -121,8 +124,17 @@ const socketConnection = (io) => {
     });
 
     // chat in game
-    socket.on("chatMessage", (data) => {
+    socket.on("chatMessage", async (data) => {
       io.in(data.tableId.toString()).emit("newMessage", data);
+      await updateChat(io, socket, data);
+    });
+
+    socket.on("updateChatIsRead", async (data) => {
+      await updateSeenBy(io, socket, data);
+    });
+
+    socket.on("typingOnChat", async (data) => {
+      await typingonChat(io, socket, data);
     });
 
     // disconnect from server

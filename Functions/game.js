@@ -1585,3 +1585,71 @@ export const checkRoom = async (data, socket, io) => {
     console.log("Error in checkRoom =>", error);
   }
 };
+
+export const updateChat = async (io, socket, data) => {
+  try {
+    console.log("data ==>", data);
+    const { tableId, message, userId } = data;
+    let room = await roomModel.find({ _id: tableId });
+    console.log(room);
+    if (room) {
+      const user = await userModel.findOne({ _id: userId });
+
+      const { firstName, lastName, profile } = user || {};
+      await roomModel.findOneAndUpdate(
+        { _id: tableId },
+        {
+          $push: {
+            chats: {
+              message: message,
+              userId: userId,
+              firstName: firstName,
+              lastName: lastName,
+              profile,
+              date: new Date().toLocaleTimeString(),
+              seenBy: [],
+            },
+          },
+        }
+      );
+      let room = await roomModel.findOne({ _id: tableId });
+
+      io.in(tableId).emit("updateChat", { chat: room?.chats });
+    } else {
+      io.in(tableId).emit("updateChat", { chat: [] });
+    }
+  } catch (error) {
+    console.log("Error in updateChat", error);
+  }
+};
+
+export const updateSeenBy = async (io, socket, data) => {
+  try {
+    console.log("update seen by executed", data);
+    const { userId, tableId } = data;
+    let room = await roomModel.findOne({ _id: tableId });
+    console.log("room", room);
+    let filterdChats = room.chats.map((chat) => {
+      if (chat.userId !== userId && chat.seenBy.indexOf(userId) < 0) {
+        chat.seenBy.push(userId);
+      }
+      return chat;
+    });
+    // console.log(filterdChats);
+    await roomModel.updateOne(
+      { _id: tableId },
+      { $set: { chats: filterdChats } }
+    );
+  } catch (error) {
+    console.log("error in updateChatIsRead", error);
+  }
+};
+
+export const typingonChat = (io, socket, data) => {
+  try {
+    const { userId, tableId, typing } = data;
+    io.in(tableId).emit("updateTypingState", { CrrUserId: userId, typing });
+  } catch (error) {
+    console.log("error in typingonChat", error);
+  }
+};
