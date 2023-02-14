@@ -1256,6 +1256,7 @@ export const leaveApiCall = async (room, userId) => {
     } else {
       url = "https://leave-tab-v2-posthand-all-t3e66zpola-uc.a.run.app/"; // for all user leave after playing any hand
     }
+
     let allUsers = player.concat(room.watchers);
     // console.log("users =>", allUsers, userId);
     if (userId) {
@@ -1275,6 +1276,7 @@ export const leaveApiCall = async (room, userId) => {
       if (!getUser) {
         return false;
       }
+
       let uid = getUser.id ? getUser.id : getUser.userid;
       let hands = getUser.hands ? [...getUser.hands] : [];
       if (room.gamestart) {
@@ -1445,7 +1447,7 @@ export const leaveApiCall = async (room, userId) => {
     });
     await Promise.allSettled([
       ...userWinPromise,
-      transactionModel.insertMany(allTransactions),
+      // transactionModel.insertMany(allTransactions),
       ...statsPromise,
     ]);
     // }

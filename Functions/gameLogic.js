@@ -1,6 +1,7 @@
 import { getUpdatedStats } from "../firestore/dbFetch.js";
 import roomModel from "../modals/roomModal.js";
 import { findLoserAndWinner, finishHandApiCall, leaveApiCall } from "./game.js";
+import transactionModel from "../modals/transactionModal.js";
 import mongoose from "mongoose";
 
 const convertMongoId = (id) => mongoose.Types.ObjectId(id);
@@ -93,6 +94,7 @@ export const shuffleDeck = async (shoeSize) => {
 
 export const playerTurnTimer = async (io, data) => {
   try {
+    console.log("player turn time executed", data);
     const { tableId } = data;
     const room = await roomModel.findOne({ tableId, gamestart: true });
     console.log("PLAYERS ==> ", JSON.stringify(room.players));
@@ -328,6 +330,7 @@ export const naturals = async (players) => {
 
 export const dealerTurn = async (io, data) => {
   try {
+    console.log("dealer turns executes first==>", data);
     const { tableId } = data;
     const room = await roomModel.findOne({ tableId });
     let dealer = room.dealer;
@@ -352,6 +355,7 @@ export const dealerTurn = async (io, data) => {
       const updatedRoom = await roomModel.findOne({ tableId }).select("-deck");
       io.in(tableId).emit("updateRoom", updatedRoom);
       setTimeout(async () => {
+        console.log("outputCardSumDealer executed from setTimeOut");
         await outputCardSumDealer(io, data, updatedRoom);
       }, 500);
     }
@@ -675,6 +679,7 @@ export const splitAction = async (io, socket, data) => {
 
 export const surrender = async (io, socket, data) => {
   try {
+    console.log("Surrendor executed");
     const { tableId, userId } = data;
     const room = await roomModel.findOne({
       $and: [
@@ -981,6 +986,9 @@ const outputCardSumAce = async (io, data, room) => {
 };
 
 const outputCardSumAceDealer = async (io, data, room) => {
+  // console.log(
+  //   "outputCardSumAceDealer ================================================================="
+  // );
   let { dealer } = room;
   if (dealer.sum[1] > 21) {
     dealer.sum.pop();
@@ -1007,6 +1015,9 @@ const outputCardSumAceDealer = async (io, data, room) => {
 
 const outputCardSumDealer = async (io, data, room) => {
   let dealer = room.dealer;
+  console.log(
+    "outputCardSumDealer ================================================================="
+  );
   if (dealer.sum < 17) {
     setTimeout(async () => {
       await dealerTurn(io, data);
@@ -1078,6 +1089,7 @@ const playerAceDeckAce = async (data, room) => {
 
 // If dealer has Ace && deck[0] has Ace
 const dealerAceDeckAce = async (io, data, room) => {
+  console.log("dealer ace deck executed");
   try {
     let { tableId, dealer, deck } = room;
     if (dealer.hasAce && deck[0].value.hasAce) {
@@ -1199,11 +1211,12 @@ const compareSum = async (io, data, room) => {
 const finalCompareGo = async (io, data) => {
   console.log("finalCOmpareGo called", data);
   try {
-    const { tableId } = data;
+    const { tableId, userId } = data;
     const room = await roomModel.findOne({ tableId });
     let { dealer, players, handWinner } = room;
     let winners = [];
     let draw = [];
+    let currentHand = null;
 
     // if dealer sum.length === 2. Fix dealer sum before proceeding
     if (dealer.sum.length === 2 && dealer.sum[1] <= 21) {
@@ -1241,6 +1254,14 @@ const finalCompareGo = async (io, data) => {
               isWatcher: false,
               betAmount: player.betAmount,
             });
+            if (players[i].id == userId) {
+              currentHand = {
+                amount: (player.betAmount / 2) * -1,
+                action: "game-lose",
+                userId,
+                tableId,
+              };
+            }
           } else if (sum <= 21 && sum > dealer.sum) {
             // Devide betAmount by half because when there split so there is two bet of 10 and 10 so the total bet amount is 20
             // and in below scenario the user win only one split round so this means he win total 20
@@ -1252,6 +1273,14 @@ const finalCompareGo = async (io, data) => {
               date: new Date(),
               betAmount: player.betAmount,
             });
+            if (players[i].id == userId) {
+              currentHand = {
+                amount: player.betAmount,
+                action: "game-win",
+                userId,
+                tableId,
+              };
+            }
             players[i].ticket = player.ticket + player.betAmount;
             // players[i].wallet = player.wallet + player.betAmount * 2;
             winners.push({
@@ -1285,6 +1314,15 @@ const finalCompareGo = async (io, data) => {
               date: new Date(),
               betAmount: player.betAmount,
             });
+            if (players[i].id == userId) {
+              currentHand = {
+                amount: player.betAmount,
+                action: "game-win",
+                userId,
+                tableId,
+              };
+            }
+
             players[i].ticket = player.ticket + player.betAmount;
 
             // players[i].wallet = player.wallet + player.betAmount * 2;
@@ -1303,6 +1341,14 @@ const finalCompareGo = async (io, data) => {
               date: new Date(),
               betAmount: player.betAmount,
             });
+            if (players[i].id == userId) {
+              currentHand = {
+                amount: (player.betAmount / 2) * -1,
+                action: "game-lose",
+                userId,
+                tableId,
+              };
+            }
           }
         });
       } else {
@@ -1322,6 +1368,14 @@ const finalCompareGo = async (io, data) => {
             date: new Date(),
             betAmount: player.betAmount,
           });
+          if (players[i].id == userId) {
+            currentHand = {
+              amount: player.betAmount * -1,
+              action: "game-lose",
+              userId,
+              tableId,
+            };
+          }
           return;
         }
         if (player.blackjack) {
@@ -1332,6 +1386,14 @@ const finalCompareGo = async (io, data) => {
             date: new Date(),
             betAmount: player.betAmount,
           });
+          if (players[i].id == userId) {
+            currentHand = {
+              amount: player.betAmount * 1.5 + player.betAmount,
+              action: "game-win",
+              userId,
+              tableId,
+            };
+          }
           players[i].ticket =
             player.ticket + player.betAmount * 1.5 + player.betAmount;
 
@@ -1350,6 +1412,14 @@ const finalCompareGo = async (io, data) => {
             isWatcher: false,
             betAmount: player.betAmount,
           });
+          if (players[i].id == userId) {
+            currentHand = {
+              amount: player.betAmount * -1,
+              action: "game-lose",
+              userId,
+              tableId,
+            };
+          }
         } else if (sum <= 21 && sum > dealer.sum) {
           players[i].hands.push({
             isWatcher: false,
@@ -1358,6 +1428,14 @@ const finalCompareGo = async (io, data) => {
             date: new Date(),
             betAmount: player.betAmount,
           });
+          if (players[i].id == userId) {
+            currentHand = {
+              amount: player.betAmount * 2,
+              action: "game-win",
+              userId,
+              tableId,
+            };
+          }
           players[i].ticket = player.ticket + player.betAmount * 2;
 
           // players[i].wallet = player.wallet + player.betAmount * 2;
@@ -1391,6 +1469,14 @@ const finalCompareGo = async (io, data) => {
             date: new Date(),
             betAmount: player.betAmount,
           });
+          if (players[i].id == userId) {
+            currentHand = {
+              amount: player.betAmount * 2,
+              action: "game-win",
+              userId,
+              tableId,
+            };
+          }
           players[i].ticket = player.ticket + player.betAmount * 2;
 
           // players[i].wallet = player.wallet + player.betAmount * 2;
@@ -1409,10 +1495,27 @@ const finalCompareGo = async (io, data) => {
             isWatcher: false,
             betAmount: player.betAmount,
           });
+          if (players[i].id == userId) {
+            currentHand = {
+              amount: player.betAmount * -1,
+              action: "game-lose",
+              userId,
+              tableId,
+            };
+          }
         }
       }
     });
     if (winners.length) handWinner.push(winners);
+    if (currentHand) {
+      await transactionModel.create({
+        userId: userId,
+        roomId: tableId,
+        amount: currentHand.amount,
+        transactionType: "blackjack",
+      });
+    }
+
     await roomModel.updateOne(
       { tableId },
       {
