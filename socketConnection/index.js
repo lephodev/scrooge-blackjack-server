@@ -103,6 +103,7 @@ const socketConnection = (io) => {
     });
 
     socket.on("surrender", async (data) => {
+      console.log("surrender executed", data);
       await surrender(io, socket, data);
       io.in(data.tableId).emit("action", {
         type: "surrender",
