@@ -3,6 +3,7 @@ import roomModel from "../modals/roomModal.js";
 import { findLoserAndWinner, finishHandApiCall, leaveApiCall } from "./game.js";
 import transactionModel from "../modals/transactionModal.js";
 import mongoose from "mongoose";
+import User from "../landing-server/models/user.model.js";
 
 const convertMongoId = (id) => mongoose.Types.ObjectId(id);
 
@@ -695,6 +696,7 @@ export const surrender = async (io, socket, data) => {
     });
     if (room) {
       let player = room.players.find((el) => el.turn);
+      console.log("PLayer bet amount ===============>", player.betAmount);
       let currentPlayerIndex = room.players.findIndex((el) => el.turn);
       if (currentPlayerIndex !== -1) {
         await roomModel.updateOne(
@@ -1227,14 +1229,14 @@ const finalCompareGo = async (io, data) => {
       dealer.sum = dealer.sum[0];
     }
 
-    players.forEach((player, i) => {
+    players.forEach(async (player, i) => {
       console.log("final compare player");
       let sum;
       if (!player.isPlaying) {
         return;
       }
       if (player.isSplitted && player.splitSum.length) {
-        player.splitSum.forEach((pl, j) => {
+        player.splitSum.forEach(async (pl, j) => {
           if (pl.length === 2 && pl[1] <= 21) {
             sum = pl[1];
           } else if (pl.length === 2 && pl[1] > 21) {
@@ -1247,40 +1249,38 @@ const finalCompareGo = async (io, data) => {
             // Devide betAmount by half because when there split so there is two bet of 10 and 10 so the total bet amount is 20
             // and in below scenario the user lost only one split round so this means he loss only 10
             // so what we do we devide the total betAmount by half so we can get current split card loss amount
+            const user = await User.findOne({
+              _id: convertMongoId(players[i].id),
+            });
+            console.log(
+              "user updated data 1 ========>",
+              user.wallet,
+              players[i].wallet
+            );
             players[i].hands.push({
               amount: player.betAmount / 2,
               action: "game-lose",
               date: new Date(),
               isWatcher: false,
               betAmount: player.betAmount,
+              currentWallet: user.wallet + players[i].wallet,
             });
-            if (players[i].id == userId) {
-              currentHand = {
-                amount: (player.betAmount / 2) * -1,
-                action: "game-lose",
-                userId,
-                tableId,
-              };
-            }
           } else if (sum <= 21 && sum > dealer.sum) {
             // Devide betAmount by half because when there split so there is two bet of 10 and 10 so the total bet amount is 20
             // and in below scenario the user win only one split round so this means he win total 20
             // so what we do we put the actual betAmount because 10 * 2 will be 20
+            const user = await User.findOne({
+              _id: convertMongoId(players[i].id),
+            });
             players[i].hands.push({
               amount: player.betAmount,
               isWatcher: false,
               action: "game-win",
               date: new Date(),
               betAmount: player.betAmount,
+              currentWallet: user.wallet, //players[i].wallet,
             });
-            if (players[i].id == userId) {
-              currentHand = {
-                amount: player.betAmount,
-                action: "game-win",
-                userId,
-                tableId,
-              };
-            }
+
             players[i].ticket = player.ticket + player.betAmount;
             // players[i].wallet = player.wallet + player.betAmount * 2;
             winners.push({
@@ -1297,9 +1297,8 @@ const finalCompareGo = async (io, data) => {
               action: "game-draw",
               date: new Date(),
               betAmount: player.betAmount,
-            });
-
-            // Because game is draw so it will be not add on in the ticket so Reverting back the winAmount to the user to play
+              currentWallet: players[i].wallet,
+            }); // Because game is draw so it will be not add on in the ticket so Reverting back the winAmount to the user to play
             players[i].wallet = player.wallet + player.betAmount / 2;
             draw.push({
               id: player.id,
@@ -1307,21 +1306,17 @@ const finalCompareGo = async (io, data) => {
               action: "game-draw",
             });
           } else if (dealer.sum > 21 && sum <= 21) {
+            const user = await User.findOne({
+              _id: convertMongoId(players[i].id),
+            });
             players[i].hands.push({
               amount: player.betAmount,
               isWatcher: false,
               action: "game-win",
               date: new Date(),
               betAmount: player.betAmount,
+              currentWallet: user.wallet,
             });
-            if (players[i].id == userId) {
-              currentHand = {
-                amount: player.betAmount,
-                action: "game-win",
-                userId,
-                tableId,
-              };
-            }
 
             players[i].ticket = player.ticket + player.betAmount;
 
@@ -1334,21 +1329,22 @@ const finalCompareGo = async (io, data) => {
               action: "game-win",
             });
           } else if (sum < dealer.sum && dealer.sum <= 21) {
+            const user = await User.findOne({
+              _id: convertMongoId(players[i].id),
+            });
+            console.log(
+              "user updated data 2 ========>",
+              user.wallet,
+              players[i].wallet
+            );
             players[i].hands.push({
               amount: player.betAmount / 2,
               isWatcher: false,
               action: "game-lose",
               date: new Date(),
               betAmount: player.betAmount,
+              currentWallet: user.wallet + players[i].wallet,
             });
-            if (players[i].id == userId) {
-              currentHand = {
-                amount: (player.betAmount / 2) * -1,
-                action: "game-lose",
-                userId,
-                tableId,
-              };
-            }
           }
         });
       } else {
@@ -1361,39 +1357,37 @@ const finalCompareGo = async (io, data) => {
         }
         players[i].sum = sum;
         if (player.isSurrender) {
+          const user = await User.findOne({
+            _id: convertMongoId(players[i].id),
+          });
+          console.log(
+            "user updated data 3 ========>",
+            user.wallet,
+            players[i].wallet
+          );
           players[i].hands.push({
             isWatcher: false,
-            amount: player.betAmount,
+            amount: player.betAmount / 2,
             action: "game-lose",
             date: new Date(),
             betAmount: player.betAmount,
+            currentWallet: user.wallet + players[i].wallet,
           });
-          if (players[i].id == userId) {
-            currentHand = {
-              amount: player.betAmount * -1,
-              action: "game-lose",
-              userId,
-              tableId,
-            };
-          }
+          console.log("Hands ===== >", players[i].hands);
           return;
         }
         if (player.blackjack) {
+          const user = await User.findOne({
+            _id: convertMongoId(players[i].id),
+          });
           players[i].hands.push({
             isWatcher: false,
             amount: player.betAmount * 1.5 + player.betAmount,
             action: "game-win",
             date: new Date(),
             betAmount: player.betAmount,
+            currentWallet: user.wallet,
           });
-          if (players[i].id == userId) {
-            currentHand = {
-              amount: player.betAmount * 1.5 + player.betAmount,
-              action: "game-win",
-              userId,
-              tableId,
-            };
-          }
           players[i].ticket =
             player.ticket + player.betAmount * 1.5 + player.betAmount;
 
@@ -1405,37 +1399,34 @@ const finalCompareGo = async (io, data) => {
             name: player.name,
           });
         } else if (sum > 21) {
+          const user = await User.findOne({
+            _id: convertMongoId(players[i].id),
+          });
+          console.log(
+            "user updated data 4 ========>",
+            user.wallet,
+            players[i].wallet
+          );
           players[i].hands.push({
             amount: player.betAmount,
             action: "game-lose",
             date: new Date(),
             isWatcher: false,
             betAmount: player.betAmount,
+            currentWallet: user.wallet + players[i].wallet,
           });
-          if (players[i].id == userId) {
-            currentHand = {
-              amount: player.betAmount * -1,
-              action: "game-lose",
-              userId,
-              tableId,
-            };
-          }
         } else if (sum <= 21 && sum > dealer.sum) {
+          const user = await User.findOne({
+            _id: convertMongoId(players[i].id),
+          });
           players[i].hands.push({
             isWatcher: false,
             amount: player.betAmount * 2,
             action: "game-win",
             date: new Date(),
             betAmount: player.betAmount,
+            currentWallet: user.wallet,
           });
-          if (players[i].id == userId) {
-            currentHand = {
-              amount: player.betAmount * 2,
-              action: "game-win",
-              userId,
-              tableId,
-            };
-          }
           players[i].ticket = player.ticket + player.betAmount * 2;
 
           // players[i].wallet = player.wallet + player.betAmount * 2;
@@ -1453,6 +1444,7 @@ const finalCompareGo = async (io, data) => {
             action: "game-draw",
             date: new Date(),
             betAmount: player.betAmount,
+            currentWallet: players[i].wallet,
           });
           // In case of draw revert the bet amount
           players[i].wallet = player.wallet + player.betAmount;
@@ -1462,21 +1454,17 @@ const finalCompareGo = async (io, data) => {
             action: "game-draw",
           });
         } else if (dealer.sum > 21 && sum <= 21) {
+          const user = await User.findOne({
+            _id: convertMongoId(players[i].id),
+          });
           players[i].hands.push({
             amount: player.betAmount * 2,
             isWatcher: false,
             action: "game-win",
             date: new Date(),
             betAmount: player.betAmount,
+            currentWallet: user.wallet,
           });
-          if (players[i].id == userId) {
-            currentHand = {
-              amount: player.betAmount * 2,
-              action: "game-win",
-              userId,
-              tableId,
-            };
-          }
           players[i].ticket = player.ticket + player.betAmount * 2;
 
           // players[i].wallet = player.wallet + player.betAmount * 2;
@@ -1488,44 +1476,53 @@ const finalCompareGo = async (io, data) => {
             action: "game-win",
           });
         } else if (sum < dealer.sum && dealer.sum <= 21) {
+          const user = await User.findOne({
+            _id: convertMongoId(players[i].id),
+          });
+          console.log(
+            "user updated data 5 ========>",
+            user.wallet,
+            players[i].wallet
+          );
           players[i].hands.push({
             amount: player.betAmount,
             action: "game-lose",
             date: new Date(),
             isWatcher: false,
             betAmount: player.betAmount,
+            currentWallet: user.wallet + players[i].wallet,
           });
-          if (players[i].id == userId) {
-            currentHand = {
-              amount: player.betAmount * -1,
-              action: "game-lose",
-              userId,
-              tableId,
-            };
-          }
         }
       }
     });
-    if (winners.length) handWinner.push(winners);
-    if (currentHand) {
-      await transactionModel.create({
-        userId: userId,
-        roomId: tableId,
-        amount: currentHand.amount,
-        transactionType: "blackjack",
-      });
-    }
+    // const table = await roomModel.findOne({ _id: tableId });
+    // console.log("table ===== >", table);
+    setTimeout(async () => {
+      await roomModel.findOneAndUpdate(
+        { _id: tableId },
+        {
+          dealer,
+          winnerPlayer: winners,
+          handWinner,
+          players,
+          drawPlayers: draw,
+        },
+        { upsert: true }
+      );
+      console.log("players ==>", players);
+    }, 2000);
 
-    await roomModel.updateOne(
-      { tableId },
-      {
-        dealer,
-        winnerPlayer: winners,
-        handWinner,
-        players,
-        drawPlayers: draw,
-      }
-    );
+    if (winners.length) handWinner.push(winners);
+    // if (currentHand) {
+    //   await transactionModel.create({
+    //     userId: userId,
+    //     roomId: tableId,
+    //     amount: currentHand.amount,
+    //     transactionType: "blackjack",
+    //     updatedWallet: currentHand.wallet,
+    //   });
+    // }
+
     const updatedRoom = await roomModel.findOne({ tableId }).select("-deck");
     console.log("winner scoket trigger");
     io.in(tableId).emit("winner", updatedRoom);
