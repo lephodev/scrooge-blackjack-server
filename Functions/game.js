@@ -1195,7 +1195,7 @@ export const finishHandApiCall = async (room) => {
 const userTotalWinAmount = (coinsBeforeJoin, hands, userId, roomId, wallet) => {
   // Wallet balance which user comes with to play the game
   console.log("coinsBeforeJoin ====> " + coinsBeforeJoin);
-  let userBalanceNow = wallet;
+  let userBalanceNow = wallet ? wallet : coinsBeforeJoin;
   let totalTicketsWin = 0;
   const transactions = [];
   let stats = { win: 0, loss: 0, totalWinAmount: 0, totalLossAmount: 0 };
