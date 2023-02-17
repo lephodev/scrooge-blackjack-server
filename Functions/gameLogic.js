@@ -1210,6 +1210,8 @@ const compareSum = async (io, data, room) => {
 };
 
 // final compare
+const userPromise = new Promise((resolve, reject) => {});
+
 const finalCompareGo = async (io, data) => {
   console.log("finalCOmpareGo called", data);
   try {
@@ -1228,8 +1230,23 @@ const finalCompareGo = async (io, data) => {
       dealer.sum.pop();
       dealer.sum = dealer.sum[0];
     }
+    let users = [];
+    for await (const player of players) {
+      const crrUser = await User.findOne({
+        _id: player.id,
+      });
+      users.push(crrUser);
+    }
+    console.log("users == >", users);
+    // players.map(async (player, i) => {
+    //   const crrUser = await User.findOne({
+    //     _id: players[i].id,
+    //   });
+    //   // console.log("user ==== >", crrUser);
+    //   return crrUser;
+    // });
 
-    players.forEach(async (player, i) => {
+    players.forEach((player, i) => {
       console.log("final compare player");
       let sum;
       if (!player.isPlaying) {
@@ -1240,7 +1257,11 @@ const finalCompareGo = async (io, data) => {
         player.isSplitted,
         player.splitSum.length
       );
+
+      // console.log("CurrentUser", crrUser);
+      console.log("i am here");
       if (player.isSplitted && player.splitSum.length) {
+        console.log("i am in 2");
         player.splitSum.forEach(async (pl, j) => {
           if (pl.length === 2 && pl[1] <= 21) {
             sum = pl[1];
@@ -1254,36 +1275,34 @@ const finalCompareGo = async (io, data) => {
             // Devide betAmount by half because when there split so there is two bet of 10 and 10 so the total bet amount is 20
             // and in below scenario the user lost only one split round so this means he loss only 10
             // so what we do we devide the total betAmount by half so we can get current split card loss amount
-            const user = await User.findOne({
-              _id: convertMongoId(players[i].id),
-            });
-            console.log(
-              "user updated data 1 ========>",
-              user.wallet,
-              players[i].wallet
-            );
+
+            // console.log(
+            //   "user updated data 1 ========>",
+            //   user[i].wallet,
+            //   players[i].wallet
+            // );
             players[i].hands.push({
               amount: player.betAmount / 2,
               action: "game-lose",
               date: new Date(),
               isWatcher: false,
               betAmount: player.betAmount,
-              currentWallet: user.wallet + players[i].wallet,
+              currentWallet: users[i].wallet + players[i].wallet,
             });
           } else if (sum <= 21 && sum > dealer.sum) {
             // Devide betAmount by half because when there split so there is two bet of 10 and 10 so the total bet amount is 20
             // and in below scenario the user win only one split round so this means he win total 20
             // so what we do we put the actual betAmount because 10 * 2 will be 20
-            const user = await User.findOne({
-              _id: convertMongoId(players[i].id),
-            });
+            // const user = await User.findOne({
+            //   _id: convertMongoId(players[i].id),
+            // });
             players[i].hands.push({
               amount: player.betAmount,
               isWatcher: false,
               action: "game-win",
               date: new Date(),
               betAmount: player.betAmount,
-              currentWallet: user.wallet, //players[i].wallet,
+              currentWallet: users[i].wallet + players[i].wallet, //players[i].wallet,
             });
 
             players[i].ticket = player.ticket + player.betAmount;
@@ -1302,7 +1321,7 @@ const finalCompareGo = async (io, data) => {
               action: "game-draw",
               date: new Date(),
               betAmount: player.betAmount,
-              currentWallet: players[i].wallet,
+              currentWallet: players[i].wallet + players[i].wallet,
             }); // Because game is draw so it will be not add on in the ticket so Reverting back the winAmount to the user to play
             players[i].wallet = player.wallet + player.betAmount / 2;
             draw.push({
@@ -1311,16 +1330,16 @@ const finalCompareGo = async (io, data) => {
               action: "game-draw",
             });
           } else if (dealer.sum > 21 && sum <= 21) {
-            const user = await User.findOne({
-              _id: convertMongoId(players[i].id),
-            });
+            // const user = await User.findOne({
+            //   _id: convertMongoId(players[i].id),
+            // });
             players[i].hands.push({
               amount: player.betAmount,
               isWatcher: false,
               action: "game-win",
               date: new Date(),
               betAmount: player.betAmount,
-              currentWallet: user.wallet,
+              currentWallet: users[i].wallet + players[i].wallet,
             });
 
             players[i].ticket = player.ticket + player.betAmount;
@@ -1334,25 +1353,26 @@ const finalCompareGo = async (io, data) => {
               action: "game-win",
             });
           } else if (sum < dealer.sum && dealer.sum <= 21) {
-            const user = await User.findOne({
-              _id: convertMongoId(players[i].id),
-            });
-            console.log(
-              "user updated data 2 ========>",
-              user.wallet,
-              players[i].wallet
-            );
+            // const user = await User.findOne({
+            //   _id: convertMongoId(players[i].id),
+            // });
+            // console.log(
+            //   "user updated data 2 ========>",
+            //   user[i].wallet,
+            //   players[i].wallet
+            // );
             players[i].hands.push({
               amount: player.betAmount / 2,
               isWatcher: false,
               action: "game-lose",
               date: new Date(),
               betAmount: player.betAmount,
-              currentWallet: user.wallet + players[i].wallet,
+              currentWallet: users[i].wallet + players[i].wallet,
             });
           }
         });
       } else {
+        console.log("i am in");
         console.log("Player splited sum ===>", player.sum, player.sum.length);
         if (player.sum.length === 2 && player.sum[1] <= 21) {
           sum = player.sum[1];
@@ -1368,18 +1388,18 @@ const finalCompareGo = async (io, data) => {
           // });
           // console.log(
           //   "user updated data 3 ========>",
-          //   user.wallet,
+          //   user[i].wallet,
           //   players[i].wallet
           // );
           players[i].hands.push({
             isWatcher: false,
-            amount: player.betAmount,
+            amount: player.betAmount / 2,
             action: "game-lose",
             date: new Date(),
             betAmount: player.betAmount,
-            // currentWallet: user.wallet + players[i].wallet,
+            currentWallet: users[i].wallet + players[i].wallet,
           });
-          // console.log("Hands ===== >", players[i].hands);
+          console.log("Hands ===== >", players[i].hands);
           return;
         }
         if (player.blackjack) {
@@ -1392,7 +1412,7 @@ const finalCompareGo = async (io, data) => {
             action: "game-win",
             date: new Date(),
             betAmount: player.betAmount,
-            // currentWallet: user.wallet,
+            currentWallet: users[i].wallet + players[i].wallet,
           });
           players[i].ticket =
             player.ticket + player.betAmount * 1.5 + player.betAmount;
@@ -1410,7 +1430,7 @@ const finalCompareGo = async (io, data) => {
           // });
           // console.log(
           //   "user updated data 4 ========>",
-          //   user.wallet,
+          //   user[i].wallet,
           //   players[i].wallet
           // );
           players[i].hands.push({
@@ -1419,7 +1439,7 @@ const finalCompareGo = async (io, data) => {
             date: new Date(),
             isWatcher: false,
             betAmount: player.betAmount,
-            // currentWallet: user.wallet + players[i].wallet,
+            currentWallet: users[i].wallet + players[i].wallet,
           });
         } else if (sum <= 21 && sum > dealer.sum) {
           // const user = await User.findOne({
@@ -1431,7 +1451,7 @@ const finalCompareGo = async (io, data) => {
             action: "game-win",
             date: new Date(),
             betAmount: player.betAmount,
-            // currentWallet: user.wallet,
+            currentWallet: users[i].wallet + players[i].wallet,
           });
           players[i].ticket = player.ticket + player.betAmount * 2;
 
@@ -1450,7 +1470,7 @@ const finalCompareGo = async (io, data) => {
             action: "game-draw",
             date: new Date(),
             betAmount: player.betAmount,
-            currentWallet: players[i].wallet,
+            currentWallet: players[i].wallet + players[i].wallet,
           });
           // In case of draw revert the bet amount
           players[i].wallet = player.wallet + player.betAmount;
@@ -1469,7 +1489,7 @@ const finalCompareGo = async (io, data) => {
             action: "game-win",
             date: new Date(),
             betAmount: player.betAmount,
-            // currentWallet: user.wallet,
+            currentWallet: users[i].wallet + players[i].wallet,
           });
           players[i].ticket = player.ticket + player.betAmount * 2;
 
@@ -1487,7 +1507,7 @@ const finalCompareGo = async (io, data) => {
           // });
           // console.log(
           //   "user updated data 5 ========>",
-          //   user.wallet,
+          //   user[i].wallet,
           //   players[i].wallet
           // );
           players[i].hands.push({
@@ -1496,7 +1516,7 @@ const finalCompareGo = async (io, data) => {
             date: new Date(),
             isWatcher: false,
             betAmount: player.betAmount,
-            // currentWallet: user.wallet + players[i].wallet,
+            currentWallet: users[i].wallet + players[i].wallet,
           });
         }
       }
