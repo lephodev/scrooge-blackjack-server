@@ -1195,7 +1195,8 @@ export const finishHandApiCall = async (room) => {
 const userTotalWinAmount = (coinsBeforeJoin, hands, userId, roomId, wallet) => {
   // Wallet balance which user comes with to play the game
   console.log("coinsBeforeJoin ====> " + coinsBeforeJoin);
-  let userBalanceNow = wallet ? wallet : coinsBeforeJoin;
+  // let userBalanceNow = wallet ? wallet : coinsBeforeJoin;
+  let userBalanceNow = coinsBeforeJoin;
   let totalTicketsWin = 0;
   const transactions = [];
   let stats = { win: 0, loss: 0, totalWinAmount: 0, totalLossAmount: 0 };
@@ -1215,7 +1216,7 @@ const userTotalWinAmount = (coinsBeforeJoin, hands, userId, roomId, wallet) => {
     });
 
     if (action === "game-lose") {
-      // userBalanceNow -= betAmount;
+      userBalanceNow -= betAmount;
       stats = {
         ...stats,
         loss: stats.loss + 1,
@@ -1223,7 +1224,7 @@ const userTotalWinAmount = (coinsBeforeJoin, hands, userId, roomId, wallet) => {
       };
     } else if (action === "game-draw") {
       // Because in draw case the amount will be no amount be deduct or increase
-      // userBalanceNow -= amount;
+      userBalanceNow -= amount;
     } else if (action === "game-win") {
       stats = {
         ...stats,
@@ -1231,7 +1232,7 @@ const userTotalWinAmount = (coinsBeforeJoin, hands, userId, roomId, wallet) => {
         totalWinAmount: stats.totalWinAmount + amount,
       };
       // Because the amount will be increase in the ticket thats why we are decreasing the
-      // userBalanceNow -= betAmount;
+      userBalanceNow -= betAmount;
       totalTicketsWin += amount;
     }
     // console.log("userBalanceNow ==>", userBalanceNow, betAmount);
@@ -1327,7 +1328,7 @@ export const leaveApiCall = async (room, userId) => {
         users.push({
           uid,
           hands,
-          wallet: item.wallet,
+          // wallet: item.wallet,
           // hands: url === 'https://leave-tab-v2-posthand-all-t3e66zpola-uc.a.run.app/'
           //   ? []
           //   : hands,
@@ -1423,8 +1424,8 @@ export const leaveApiCall = async (room, userId) => {
         elUser.coinsBeforeJoin,
         elUser.hands,
         elUser.uid,
-        room.tableId,
-        elUser.wallet
+        room.tableId
+        // elUser.wallet
       );
       console.log("userBalanceNow ====>", userBalanceNow);
       allTransactions = [...allTransactions, ...transactions];
