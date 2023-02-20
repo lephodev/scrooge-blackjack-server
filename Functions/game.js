@@ -1213,6 +1213,7 @@ const userTotalWinAmount = (coinsBeforeJoin, hands, userId, roomId, wallet) => {
       transactionDetails: {},
       updatedWallet: currentWallet,
       transactionType: "blackjack",
+      status: action,
     });
 
     if (action === "game-lose") {
