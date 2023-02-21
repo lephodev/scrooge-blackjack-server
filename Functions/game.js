@@ -1195,7 +1195,7 @@ export const finishHandApiCall = async (room) => {
 const userTotalWinAmount = (coinsBeforeJoin, hands, userId, roomId, wallet) => {
   // Wallet balance which user comes with to play the game
   console.log("coinsBeforeJoin ====> " + coinsBeforeJoin);
-  let userBalanceNow = wallet ? wallet : coinsBeforeJoin;
+  let userBalanceNow = wallet ? Number(wallet) : coinsBeforeJoin;
   // let userBalanceNow = coinsBeforeJoin;
   let totalTicketsWin = 0;
   const transactions = [];
@@ -1428,7 +1428,11 @@ export const leaveApiCall = async (room, userId) => {
         room.tableId,
         elUser.wallet
       );
-      console.log("userBalanceNow ====>", userBalanceNow);
+      console.log(
+        "userBalanceNow ====>",
+        userBalanceNow,
+        typeof userBalanceNow
+      );
       allTransactions = [...allTransactions, ...transactions];
       userWinPromise.push(
         await User.updateOne(
@@ -1436,6 +1440,7 @@ export const leaveApiCall = async (room, userId) => {
           { $inc: { wallet: userBalanceNow, ticket: totalTicketsWin } }
         )
       );
+      console.log("line 1443");
       if (shouldUpdateStats) {
         statsPromise.push(
           await rankModel.updateOne(
@@ -1461,6 +1466,7 @@ export const leaveApiCall = async (room, userId) => {
       transactionModel.insertMany(allTransactions),
       ...statsPromise,
     ]);
+    console.log("line no 1468");
     // }
 
     // const res = await axios.post(url, payload, {
@@ -1472,6 +1478,7 @@ export const leaveApiCall = async (room, userId) => {
     // if (res.data.error === 'no error') {
     //   if (userId) {
 
+    console.log("line no 1480");
     await roomModel.updateOne(
       { _id: room._id, "players.id": convertMongoId(userId) },
       {
@@ -1480,6 +1487,7 @@ export const leaveApiCall = async (room, userId) => {
         },
       }
     );
+    console.log("line no 1489");
     // }
     return true;
     // } else {
