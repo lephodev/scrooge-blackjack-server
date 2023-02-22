@@ -1431,6 +1431,7 @@ export const leaveApiCall = async (room, userId) => {
       console.log(
         "userBalanceNow ====>",
         userBalanceNow,
+        stats,
         typeof userBalanceNow
       );
       allTransactions = [...allTransactions, ...transactions];
@@ -1453,7 +1454,7 @@ export const leaveApiCall = async (room, userId) => {
                 win: stats.win,
                 loss: stats.loss,
                 totalWinAmount: stats.totalWinAmount,
-                totalLossAmount: stats.totalLossAmount,
+                totalLossAmount: stats.totalLossAmount || 0,
               },
             },
             { upsert: true }
