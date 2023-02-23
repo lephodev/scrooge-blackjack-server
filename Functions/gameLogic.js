@@ -1453,7 +1453,7 @@ const finalCompareGo = async (io, data) => {
             betAmount: player.betAmount,
             currentWallet: users[i].wallet + players[i].wallet,
           });
-          players[i].ticket = player.ticket + player.betAmount * 2;
+          players[i].ticket = player.ticket + player.betAmount;
 
           // players[i].wallet = player.wallet + player.betAmount * 2;
           winners.push({
@@ -1491,7 +1491,7 @@ const finalCompareGo = async (io, data) => {
             betAmount: player.betAmount,
             currentWallet: users[i].wallet + players[i].wallet,
           });
-          players[i].ticket = player.ticket + player.betAmount * 2;
+          players[i].ticket = player.ticket + player.betAmount;
 
           // players[i].wallet = player.wallet + player.betAmount * 2;
           winners.push({
