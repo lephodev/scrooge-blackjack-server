@@ -330,7 +330,8 @@ export const makeSliderBet = async (io, socket, data) => {
 export const bet = async (io, socket, data) => {
   try {
     // check game is exist and user is in the game
-    let { roomId, userId, betAmount } = data;
+    console.log("data", data);
+    let { roomId, userId, betAmount, maxBetAmount } = data;
 
     if (!betAmount) {
       socket.emit("actionError", {
@@ -346,6 +347,10 @@ export const bet = async (io, socket, data) => {
       return;
     }
 
+    if (betAmount > maxBetAmount) {
+      betAmount = maxBetAmount;
+    }
+
     userId = convertMongoId(userId);
     console.log({ roomId, userId, betAmount });
     if (roomId && userId) {
@@ -356,12 +361,20 @@ export const bet = async (io, socket, data) => {
           { gamestart: false },
         ],
       });
-      console.log({ game });
+      console.log("game ===>", { game });
       if (!game) return socket.emit("gameAlreadyStarted");
       if (
         game.players.find((el) => el.id.toString() === userId.toString())
           .wallet >= betAmount
       ) {
+        const player = game.players.find(
+          (el) => el.id.toString() === userId.toString()
+        );
+        let crrBetAmt = player?.betAmount;
+        console.log("current bet amount", crrBetAmt);
+        if (crrBetAmt + betAmount > maxBetAmount) {
+          betAmount = maxBetAmount - crrBetAmt;
+        }
         const bet = await roomModel.updateOne(
           {
             $and: [
