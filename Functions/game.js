@@ -330,7 +330,8 @@ export const makeSliderBet = async (io, socket, data) => {
 export const bet = async (io, socket, data) => {
   try {
     // check game is exist and user is in the game
-    let { roomId, userId, betAmount } = data;
+    console.log("data", data);
+    let { roomId, userId, betAmount, maxBetAmount } = data;
 
     if (!betAmount) {
       socket.emit("actionError", {
@@ -346,6 +347,10 @@ export const bet = async (io, socket, data) => {
       return;
     }
 
+    if (betAmount > maxBetAmount) {
+      betAmount = maxBetAmount;
+    }
+
     userId = convertMongoId(userId);
     console.log({ roomId, userId, betAmount });
     if (roomId && userId) {
@@ -356,12 +361,20 @@ export const bet = async (io, socket, data) => {
           { gamestart: false },
         ],
       });
-      console.log({ game });
+      console.log("game ===>", { game });
       if (!game) return socket.emit("gameAlreadyStarted");
       if (
         game.players.find((el) => el.id.toString() === userId.toString())
           .wallet >= betAmount
       ) {
+        const player = game.players.find(
+          (el) => el.id.toString() === userId.toString()
+        );
+        let crrBetAmt = player?.betAmount;
+        console.log("current bet amount", crrBetAmt);
+        if (crrBetAmt + betAmount > maxBetAmount) {
+          betAmount = maxBetAmount - crrBetAmt;
+        }
         const bet = await roomModel.updateOne(
           {
             $and: [
@@ -1221,7 +1234,7 @@ const userTotalWinAmount = (coinsBeforeJoin, hands, userId, roomId, wallet) => {
       stats = {
         ...stats,
         loss: stats.loss + 1,
-        totalLossAmount: stats.totalLossAmount + amount,
+        totalLossAmount: stats.totalLossAmount + amount ? amount : 0,
       };
     } else if (action === "game-draw") {
       // Because in draw case the amount will be no amount be deduct or increase
@@ -1230,7 +1243,7 @@ const userTotalWinAmount = (coinsBeforeJoin, hands, userId, roomId, wallet) => {
       stats = {
         ...stats,
         win: stats.win + 1,
-        totalWinAmount: stats.totalWinAmount + amount,
+        totalWinAmount: stats.totalWinAmount + amount ? amount : 0,
       };
       // Because the amount will be increase in the ticket thats why we are decreasing the
       // userBalanceNow -= betAmount;
@@ -1239,6 +1252,7 @@ const userTotalWinAmount = (coinsBeforeJoin, hands, userId, roomId, wallet) => {
     // console.log("userBalanceNow ==>", userBalanceNow, betAmount);
   });
   console.log("userBalanceNow ==>", userBalanceNow);
+  console.log("Status ==>", stats);
   return {
     userBalanceNow,
     transactions,
