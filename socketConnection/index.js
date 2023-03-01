@@ -56,57 +56,69 @@ const socketConnection = (io) => {
     });
 
     socket.on("confirmBet", async (data) => {
-      await confirmBet(io, socket, data);
+      process.nextTick(async () => {
+        await confirmBet(io, socket, data);
+      });
     });
 
     // player action socket
     socket.on("hit", async (data) => {
-      const p = await hitAction(io, socket, data);
-      io.in(data.tableId).emit("action", {
-        type: "hit",
+      process.nextTick(async () => {
+        const p = await hitAction(io, socket, data);
+        io.in(data.tableId).emit("action", {
+          type: "hit",
+        });
+        if (p.isBusted) {
+          setTimeout(() => {
+            io.in(data.tableId).emit("action", {
+              type: "burst",
+            });
+          }, 500);
+        }
       });
-      if (p.isBusted) {
-        setTimeout(() => {
-          io.in(data.tableId).emit("action", {
-            type: "burst",
-          });
-        }, 500);
-      }
     });
 
     socket.on("stand", async (data) => {
-      await standAction(io, socket, data);
-      io.in(data.tableId).emit("action", {
-        type: "stand",
+      process.nextTick(async () => {
+        await standAction(io, socket, data);
+        io.in(data.tableId).emit("action", {
+          type: "stand",
+        });
       });
     });
 
     socket.on("double", async (data) => {
-      const p = await doubleAction(io, socket, data);
-      io.in(data.tableId).emit("action", {
-        type: "doubleDown",
+      process.nextTick(async () => {
+        const p = await doubleAction(io, socket, data);
+        io.in(data.tableId).emit("action", {
+          type: "doubleDown",
+        });
+        if (p.isBusted) {
+          setTimeout(() => {
+            io.in(data.tableId).emit("action", {
+              type: "burst",
+            });
+          }, 400);
+        }
       });
-      if (p.isBusted) {
-        setTimeout(() => {
-          io.in(data.tableId).emit("action", {
-            type: "burst",
-          });
-        }, 500);
-      }
     });
 
     socket.on("split", async (data) => {
-      await splitAction(io, socket, data);
-      io.in(data.tableId).emit("action", {
-        type: "split",
+      process.nextTick(async () => {
+        await splitAction(io, socket, data);
+        io.in(data.tableId).emit("action", {
+          type: "split",
+        });
       });
     });
 
     socket.on("surrender", async (data) => {
       console.log("surrender executed", data);
-      await surrender(io, socket, data);
-      io.in(data.tableId).emit("action", {
-        type: "surrender",
+      process.nextTick(async () => {
+        await surrender(io, socket, data);
+        io.in(data.tableId).emit("action", {
+          type: "surrender",
+        });
       });
     });
 
