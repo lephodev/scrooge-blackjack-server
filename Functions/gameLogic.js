@@ -1186,7 +1186,11 @@ const compareSum = async (io, data, room) => {
       player.hasAce = false;
       player.cards.push(deck[0]);
     }
+
+    console.log("DDDEEEEEECCCCC1", deck);
     deck.shift();
+    console.log("DDDEEEEEECCCCC2", deck);
+
     // await roomModel.updateOne(
     //   {
     //     $and: [
