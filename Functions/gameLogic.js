@@ -385,7 +385,25 @@ export const hitAction = async (io, socket, data) => {
       );
       let deck = room.deck;
       if (player.hasAce || deck[0].value.hasAce === true) {
-        await compareSumAce(io, data, room);
+        console.log("Ace condition is executed");
+        room = await compareSumAce(io, data, room);
+        io.in(tableId).emit("updateRoom", room);
+        const { players, deck } = room;
+        await roomModel.updateOne(
+          {
+            $and: [
+              { tableId },
+              {
+                players: {
+                  $elemMatch: { $and: [{ id: userId }, { turn: true }] },
+                },
+              },
+            ],
+          },
+          {
+            $set: { players: players, deck: deck },
+          }
+        );
       } else if (player.hasAce || deck[0].value.hasAce === undefined) {
         console.log("Compare sun executed =====================>");
         room = await compareSum(io, data, room);
@@ -932,59 +950,92 @@ const outputCardSumAce = async (io, data, room) => {
           player.isActed = false;
           player.hasAce = hasAce(player.cards[player.splitIndex]);
           let isSame = isSameCards(player.cards[player.splitIndex]);
-          await roomModel.updateOne(
-            {
-              $and: [
-                { tableId: room.tableId },
-                { players: { $elemMatch: { id: player.id } } },
-              ],
-            },
-            {
-              "players.$.splitIndex": player.splitIndex,
-              "players.$.turn": true,
-              "players.$.isSameCard": isSame,
-              "players.$.hasAce": player.hasAce,
-              "players.$.isActed": false,
-              "players.$.action": "split",
+          room.players = room.players.map((el) => {
+            if (el.turn) {
+              el.splitIndex = player.splitInde;
+              el.turn = true;
+              el.isSameCard = isSame;
+              el.hasAce = player.hasAc;
+              el.isActed = false;
+              el.action = "split";
             }
-          );
+            return el;
+          });
+          // await roomModel.updateOne(
+          //   {
+          //     $and: [
+          //       { tableId: room.tableId },
+          //       { players: { $elemMatch: { id: player.id } } },
+          //     ],
+          //   },
+          //   {
+          //     "players.$.splitIndex": player.splitIndex,
+          //     "players.$.turn": true,
+          //     "players.$.isSameCard": isSame,
+          //     "players.$.hasAce": player.hasAce,
+          //     "players.$.isActed": false,
+          //     "players.$.action": "split",
+          //   }
+          // );
         } else {
-          await roomModel.updateOne(
-            {
-              $and: [
-                { tableId: data.tableId },
-                {
-                  players: { $elemMatch: { id: convertMongoId(data.userId) } },
-                },
-              ],
-            },
-            {
-              "players.$.sum": player.sum,
-              "players.$.splitSum": player.splitSum,
-              "players.$.hasAce": player.hasAce,
-              "players.$.action": "stand",
-              "players.$.turn": true,
-              "players.$.isActed": false,
+          room.players = room.players.map((el) => {
+            if (el.turn) {
+              el.sum = player.sum;
+              el.splitSum = player.splitSum;
+              el.hasAce = player.hasAce;
+              el.action = "stand";
+              el.turn = true;
+              el.isActed = false;
             }
-          );
+            return el;
+          });
+          // await roomModel.updateOne(
+          //   {
+          //     $and: [
+          //       { tableId: data.tableId },
+          //       {
+          //         players: { $elemMatch: { id: convertMongoId(data.userId) } },
+          //       },
+          //     ],
+          //   },
+          //   {
+          //     "players.$.sum": player.sum,
+          //     "players.$.splitSum": player.splitSum,
+          //     "players.$.hasAce": player.hasAce,
+          //     "players.$.action": "stand",
+          //     "players.$.turn": true,
+          //     "players.$.isActed": false,
+          //   }
+          // );
         }
       } else {
-        await roomModel.updateOne(
-          {
-            $and: [
-              { tableId: data.tableId },
-              { players: { $elemMatch: { id: convertMongoId(data.userId) } } },
-            ],
-          },
-          {
-            "players.$.sum": player.sum,
-            "players.$.splitSum": player.splitSum,
-            "players.$.hasAce": player.hasAce,
-            "players.$.action": "hit",
-            "players.$.turn": true,
-            "players.$.isActed": true,
+        room.players = room.players.map((el) => {
+          if (el.turn) {
+            el.sum = player.sum;
+            el.splitSum = player.splitSum;
+            el.hasAce = player.hasAce;
+            el.action = "hit";
+            el.turn = true;
+            el.isActed = false;
           }
-        );
+          return el;
+        });
+        // await roomModel.updateOne(
+        //   {
+        //     $and: [
+        //       { tableId: data.tableId },
+        //       { players: { $elemMatch: { id: convertMongoId(data.userId) } } },
+        //     ],
+        //   },
+        //   {
+        //     "players.$.sum": player.sum,
+        //     "players.$.splitSum": player.splitSum,
+        //     "players.$.hasAce": player.hasAce,
+        //     "players.$.action": "hit",
+        //     "players.$.turn": true,
+        //     "players.$.isActed": true,
+        //   }
+        // );
       }
     } else {
       // Check if the higher value is over 21
@@ -1000,60 +1051,95 @@ const outputCardSumAce = async (io, data, room) => {
       }
       // Take the current value and do the following...
       if (player.sum >= 21) {
-        await roomModel.updateOne(
-          {
-            $and: [
-              { tableId: data.tableId },
-              { players: { $elemMatch: { id: convertMongoId(data.userId) } } },
-            ],
-          },
-          {
-            "players.$.sum": player.sum,
-            "players.$.cards": player.cards,
-            "players.$.hasAce": player.hasAce,
-            "players.$.action": "stand",
-            "players.$.turn": true,
-            "players.$.isBusted": player.sum > 21 ? true : false,
+        room.players = room.players.map((el) => {
+          if (el.turn) {
+            el.sum = player.sum;
+            el.cards = player.cards;
+            el.hasAce = player.hasAce;
+            el.action = "stand";
+            el.turn = true;
+            el.isActed = player.sum > 21 ? true : false;
           }
-        );
+          return el;
+        });
+        // await roomModel.updateOne(
+        //   {
+        //     $and: [
+        //       { tableId: data.tableId },
+        //       { players: { $elemMatch: { id: convertMongoId(data.userId) } } },
+        //     ],
+        //   },
+        //   {
+        //     "players.$.sum": player.sum,
+        //     "players.$.cards": player.cards,
+        //     "players.$.hasAce": player.hasAce,
+        //     "players.$.action": "stand",
+        //     "players.$.turn": true,
+        //     "players.$.isBusted": player.sum > 21 ? true : false,
+        //   }
+        // );
       } else if (player.sum < 21 && player.doubleDown === true) {
-        await roomModel.updateOne(
-          {
-            $and: [
-              { tableId: data.tableId },
-              { players: { $elemMatch: { id: convertMongoId(data.userId) } } },
-            ],
-          },
-          {
-            "players.$.sum": player.sum,
-            "players.$.cards": player.cards,
-            "players.$.hasAce": player.hasAce,
-            "players.$.action": "stand",
-            "players.$.turn": false,
-            "players.$.isActed": true,
+        room.players = room.players.map((el) => {
+          if (el.turn) {
+            el.sum = player.sum;
+            el.cards = player.cards;
+            el.hasAce = player.hasAce;
+            el.action = "stand";
+            el.turn = false;
+            el.isActed = true;
           }
-        );
+          return el;
+        });
+        // await roomModel.updateOne(
+        //   {
+        //     $and: [
+        //       { tableId: data.tableId },
+        //       { players: { $elemMatch: { id: convertMongoId(data.userId) } } },
+        //     ],
+        //   },
+        //   {
+        //     "players.$.sum": player.sum,
+        //     "players.$.cards": player.cards,
+        //     "players.$.hasAce": player.hasAce,
+        //     "players.$.action": "stand",
+        //     "players.$.turn": false,
+        //     "players.$.isActed": true,
+        //   }
+        // );
       } else if (player.sum < 21 && player.doubleDown === false) {
-        await roomModel.updateOne(
-          {
-            $and: [
-              { tableId: data.tableId },
-              { players: { $elemMatch: { id: convertMongoId(data.userId) } } },
-            ],
-          },
-          {
-            "players.$.sum": player.sum,
-            "players.$.cards": player.cards,
-            "players.$.hasAce": player.hasAce,
-            "players.$.action": "hit",
-            "players.$.turn": true,
-            "players.$.isActed": true,
+        room.players = room.players.map((el) => {
+          if (el.turn) {
+            el.sum = player.sum;
+            el.cards = player.cards;
+            el.hasAce = player.hasAce;
+            el.action = "hit";
+            el.turn = true;
+            el.isActed = true;
           }
-        );
+          return el;
+        });
+        // await roomModel.updateOne(
+        //   {
+        //     $and: [
+        //       { tableId: data.tableId },
+        //       { players: { $elemMatch: { id: convertMongoId(data.userId) } } },
+        //     ],
+        //   },
+        //   {
+        //     "players.$.sum": player.sum,
+        //     "players.$.cards": player.cards,
+        //     "players.$.hasAce": player.hasAce,
+        //     "players.$.action": "hit",
+        //     "players.$.turn": true,
+        //     "players.$.isActed": true,
+        //   }
+        // );
       }
     }
+    return room;
   } catch (error) {
     console.log("Error in outputcardSumAce =>", error);
+    return room;
   }
 };
 
@@ -1138,24 +1224,30 @@ const playerAceDeckAce = async (data, room) => {
     player.hasAce = true;
 
     deck.shift();
-    await roomModel.updateOne(
-      {
-        $and: [
-          { tableId },
-          { players: { $elemMatch: { id: convertMongoId(data.userId) } } },
-        ],
-      },
-      {
-        "players.$.sum": player.sum,
-        "players.$.cards": player.cards,
-        "players.$.hasAce": player.hasAce,
-        "players.$.splitSum": player.splitSum,
-        "players.$.action": "hit",
-        deck,
-      }
-    );
+
+    room.players = room.players.map((el) => {
+      return el.turn ? player : el;
+    });
+    room.deck = deck; // await roomModel.updateOne(
+    //   {
+    //     $and: [
+    //       { tableId },
+    //       { players: { $elemMatch: { id: convertMongoId(data.userId) } } },
+    //     ],
+    //   },
+    //   {
+    //     "players.$.sum": player.sum,
+    //     "players.$.cards": player.cards,
+    //     "players.$.hasAce": player.hasAce,
+    //     "players.$.splitSum": player.splitSum,
+    //     "players.$.action": "hit",
+    //     deck,
+    //   }
+    // );
+    return room;
   } catch (err) {
     console.log("Error in playerAcedeckAce ->", err);
+    return room;
   }
 };
 
@@ -1242,9 +1334,10 @@ const bust = async (io, data, room) => {
 };
 
 const compareSumAce = async (io, data, room) => {
-  await playerAceDeckAce(data, room); // <--- Check if player has a ACE && next card has ACE
-  const updateRoom = await roomModel.findOne({ tableId: data.tableId });
-  await outputCardSumAce(io, data, updateRoom);
+  room = await playerAceDeckAce(data, room); // <--- Check if player has a ACE && next card has ACE
+  // const updateRoom = await roomModel.findOne({ tableId: data.tableId });
+  room = await outputCardSumAce(io, data, room);
+  return room;
 };
 
 const compareSum = async (io, data, room) => {
