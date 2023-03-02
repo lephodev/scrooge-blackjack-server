@@ -63,28 +63,36 @@ const socketConnection = (io) => {
 
     // player action socket
     socket.on("hit", async (data) => {
-      process.nextTick(async () => {
-        const p = await hitAction(io, socket, data);
-        io.in(data.tableId).emit("action", {
-          type: "hit",
-        });
-        if (p.isBusted) {
-          setTimeout(() => {
-            io.in(data.tableId).emit("action", {
-              type: "burst",
-            });
-          }, 500);
-        }
+      console.log("hit---->>>>>");
+      io.in(data.tableId).emit("action", {
+        type: "hit",
       });
+      // process.nextTick(async () => {
+      //   // const p = await hitAction(io, socket, data);
+      //   io.in(data.tableId).emit("action", {
+      //     type: "hit",
+      //   });
+      //   // if (p.isBusted) {
+      //   //   setTimeout(() => {
+      //   //     io.in(data.tableId).emit("action", {
+      //   //       type: "burst",
+      //   //     });
+      //   //   }, 500);
+      //   // }
+      // });
     });
 
     socket.on("stand", async (data) => {
-      process.nextTick(async () => {
-        await standAction(io, socket, data);
-        io.in(data.tableId).emit("action", {
-          type: "stand",
-        });
+      console.log("standstandstandstandstand-----");
+      io.in(data.tableId).emit("action", {
+        type: "stand",
       });
+      // process.nextTick(async () => {
+      //   await standAction(io, socket, data);
+      //   io.in(data.tableId).emit("action", {
+      //     type: "stand",
+      //   });
+      // });
     });
 
     socket.on("double", async (data) => {
