@@ -1189,7 +1189,7 @@ const compareSum = async (io, data, room) => {
 
     // console.log("DDDEEEEEECCCCC1", deck);
     // deck.shift();
-    console.log("DDDEEEEEECCCCC2", deck);
+    // console.log("DDDEEEEEECCCCC2", deck);
 
     await roomModel.updateOne(
       {
