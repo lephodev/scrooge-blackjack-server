@@ -1187,22 +1187,22 @@ const compareSum = async (io, data, room) => {
       player.cards.push(deck[0]);
     }
     deck.shift();
-    await roomModel.updateOne(
-      {
-        $and: [
-          { tableId },
-          { players: { $elemMatch: { id: convertMongoId(data.userId) } } },
-        ],
-      },
-      {
-        "players.$.sum": player.sum,
-        "players.$.cards": player.cards,
-        "players.$.hasAce": player.hasAce,
-        "players.$.splitSum": player.splitSum,
-        deck,
-      },
-      { upsert: true }
-    );
+    // await roomModel.updateOne(
+    //   {
+    //     $and: [
+    //       { tableId },
+    //       { players: { $elemMatch: { id: convertMongoId(data.userId) } } },
+    //     ],
+    //   },
+    //   {
+    //     "players.$.sum": player.sum,
+    //     "players.$.cards": player.cards,
+    //     "players.$.hasAce": player.hasAce,
+    //     "players.$.splitSum": player.splitSum,
+    //     deck,
+    //   },
+    //   { upsert: true }
+    // );
     const updatedRoom = await roomModel.findOne({ tableId });
     await outputCardSum(io, data, updatedRoom);
   } catch (error) {
