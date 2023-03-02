@@ -86,7 +86,7 @@ const socketConnection = (io) => {
       io.in(data.tableId).emit("action", {
         type: "doubleDown",
       });
-      if (p.isBusted) {
+      if (p?.isBusted) {
         setTimeout(() => {
           io.in(data.tableId).emit("action", {
             type: "burst",
