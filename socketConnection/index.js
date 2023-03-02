@@ -57,9 +57,7 @@ const socketConnection = (io) => {
     });
 
     socket.on("confirmBet", async (data) => {
-      process.nextTick(async () => {
-        await confirmBet(io, socket, data);
-      });
+      await confirmBet(io, socket, data);
     });
 
     // player action socket
@@ -77,49 +75,48 @@ const socketConnection = (io) => {
           }, 500);
         }
       });
+      if (p?.isBusted) {
+        setTimeout(() => {
+          io.in(data.tableId).emit("action", {
+            type: "burst",
+          });
+        }, 500);
+      }
     });
 
     socket.on("stand", async (data) => {
-      process.nextTick(async () => {
-        await standAction(io, socket, data);
-        io.in(data.tableId).emit("action", {
-          type: "stand",
-        });
+      await standAction(io, socket, data);
+      io.in(data.tableId).emit("action", {
+        type: "stand",
       });
     });
 
     socket.on("double", async (data) => {
-      process.nextTick(async () => {
-        const p = await doubleAction(io, socket, data);
-        io.in(data.tableId).emit("action", {
-          type: "doubleDown",
-        });
-        if (p.isBusted) {
-          setTimeout(() => {
-            io.in(data.tableId).emit("action", {
-              type: "burst",
-            });
-          }, 400);
-        }
+      const p = await doubleAction(io, socket, data);
+      io.in(data.tableId).emit("action", {
+        type: "doubleDown",
       });
+      if (p?.isBusted) {
+        setTimeout(() => {
+          io.in(data.tableId).emit("action", {
+            type: "burst",
+          });
+        }, 500);
+      }
     });
 
     socket.on("split", async (data) => {
-      process.nextTick(async () => {
-        await splitAction(io, socket, data);
-        io.in(data.tableId).emit("action", {
-          type: "split",
-        });
+      await splitAction(io, socket, data);
+      io.in(data.tableId).emit("action", {
+        type: "split",
       });
     });
 
     socket.on("surrender", async (data) => {
       console.log("surrender executed", data);
-      process.nextTick(async () => {
-        await surrender(io, socket, data);
-        io.in(data.tableId).emit("action", {
-          type: "surrender",
-        });
+      await surrender(io, socket, data);
+      io.in(data.tableId).emit("action", {
+        type: "surrender",
       });
     });
 
