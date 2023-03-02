@@ -30,6 +30,7 @@ import { guid } from "./utils.js";
 const socketConnection = (io) => {
   io.users = [];
   io.room = [];
+  const rooms = [];
   io.on("connection", (socket) => {
     socket.on("checkTable", async (data) => {
       await checkRoom(data, socket, io);
@@ -61,9 +62,18 @@ const socketConnection = (io) => {
 
     // player action socket
     socket.on("hit", async (data) => {
-      const p = await hitAction(io, socket, data);
-      io.in(data.tableId).emit("action", {
-        type: "hit",
+      process.nextTick(async () => {
+        const p = await hitAction(io, socket, data);
+        io.in(data.tableId).emit("action", {
+          type: "hit",
+        });
+        if (p?.isBusted) {
+          setTimeout(() => {
+            io.in(data.tableId).emit("action", {
+              type: "burst",
+            });
+          }, 500);
+        }
       });
       if (p?.isBusted) {
         setTimeout(() => {
