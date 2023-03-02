@@ -1204,7 +1204,7 @@ const compareSum = async (io, data, room) => {
     //   { upsert: true }
     // );
     const updatedRoom = await roomModel.findOne({ tableId });
-    await outputCardSum(io, data, updatedRoom);
+    // await outputCardSum(io, data, updatedRoom);
   } catch (error) {
     console.log("Error in compare sum =>", error);
   }
