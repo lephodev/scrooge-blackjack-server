@@ -75,13 +75,6 @@ const socketConnection = (io) => {
           }, 500);
         }
       });
-      if (p?.isBusted) {
-        setTimeout(() => {
-          io.in(data.tableId).emit("action", {
-            type: "burst",
-          });
-        }, 500);
-      }
     });
 
     socket.on("stand", async (data) => {
