@@ -383,9 +383,9 @@ export const hitAction = async (io, socket, data) => {
       );
       let deck = room.deck;
       if (player.hasAce || deck[0].value.hasAce === true) {
-        // await compareSumAce(io, data, room);
+        await compareSumAce(io, data, room);
       } else if (player.hasAce || deck[0].value.hasAce === undefined) {
-        // await compareSum(io, data, room);
+        await compareSum(io, data, room);
       }
     } else {
       const r = await roomModel.findOne({ tableId: tableId });
