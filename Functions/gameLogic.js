@@ -370,30 +370,30 @@ export const hitAction = async (io, socket, data) => {
   try {
     let { tableId, userId } = data;
     console.log("HIT SECTION ", { tableId });
-    // userId = convertMongoId(userId);
-    // const room = await roomModel.findOne({
-    //   $and: [
-    //     { tableId },
-    //     { players: { $elemMatch: { $and: [{ id: userId }, { turn: true }] } } },
-    //   ],
-    // });
-    // if (room) {
-    //   let player = room.players.find(
-    //     (el) => el.id.toString() === userId.toString()
-    //   );
-    //   let deck = room.deck;
-    //   if (player.hasAce || deck[0].value.hasAce === true) {
-    //     await compareSumAce(io, data, room);
-    //   } else if (player.hasAce || deck[0].value.hasAce === undefined) {
-    //     await compareSum(io, data, room);
-    //   }
-    // } else {
-    //   const r = await roomModel.findOne({ tableId: tableId });
-    //   io.in(tableId).emit("updateRoom", r);
-    // }
-    // const r = await roomModel.findOne({ tableId: tableId });
-    // let p = r.players.find((el) => el.id.toString() === userId.toString());
-    // return p;
+    userId = convertMongoId(userId);
+    const room = await roomModel.findOne({
+      $and: [
+        { tableId },
+        { players: { $elemMatch: { $and: [{ id: userId }, { turn: true }] } } },
+      ],
+    });
+    if (room) {
+      let player = room.players.find(
+        (el) => el.id.toString() === userId.toString()
+      );
+      let deck = room.deck;
+      if (player.hasAce || deck[0].value.hasAce === true) {
+        await compareSumAce(io, data, room);
+      } else if (player.hasAce || deck[0].value.hasAce === undefined) {
+        await compareSum(io, data, room);
+      }
+    } else {
+      const r = await roomModel.findOne({ tableId: tableId });
+      io.in(tableId).emit("updateRoom", r);
+    }
+    const r = await roomModel.findOne({ tableId: tableId });
+    let p = r.players.find((el) => el.id.toString() === userId.toString());
+    return p;
   } catch (error) {
     console.log("Error in hitAction =>", error);
   }
@@ -401,69 +401,68 @@ export const hitAction = async (io, socket, data) => {
 
 export const standAction = async (io, socket, data) => {
   try {
-    console.log("callled stand action");
-    // const { tableId, userId } = data;
-    // const room = await roomModel.findOne({
-    //   $and: [
-    //     { tableId },
-    //     {
-    //       players: {
-    //         $elemMatch: {
-    //           $and: [{ id: convertMongoId(userId) }, { turn: true }],
-    //         },
-    //       },
-    //     },
-    //   ],
-    // });
-    // if (room) {
-    //   let player = room.players.find((el) => el.turn);
-    //   let currentPlayerIndex = room.players.findIndex(
-    //     (el) => el.turn && el.action === ""
-    //   );
-    //   if (currentPlayerIndex !== -1) {
-    //     if (
-    //       player.isSplitted &&
-    //       player.splitSum.length - 1 > player.splitIndex
-    //     ) {
-    //       player.splitIndex += 1;
-    //       let isHasAce = hasAce(player.cards[player.splitIndex]);
-    //       let isSame = isSameCards(player.cards[player.splitIndex]);
-    //       await roomModel.updateOne(
-    //         {
-    //           $and: [
-    //             { tableId: room.tableId },
-    //             { players: { $elemMatch: { id: player.id } } },
-    //           ],
-    //         },
-    //         {
-    //           "players.$.turn": true,
-    //           "players.$.splitIndex": player.splitIndex,
-    //           "players.$.isSameCard": isSame,
-    //           "players.$.hasAce": isHasAce,
-    //           "players.$.action": "split",
-    //         }
-    //       );
-    //     } else {
-    //       await roomModel.updateOne(
-    //         {
-    //           $and: [
-    //             { tableId },
-    //             { players: { $elemMatch: { id: player.id } } },
-    //           ],
-    //         },
-    //         {
-    //           "players.$.turn": true,
-    //           "players.$.action": "stand",
-    //         }
-    //       );
-    //     }
-    //   } else {
-    //     socket.emit("actionError", { msg: "CurrentPlayer not found" });
-    //   }
-    // } else {
-    //   const r = roomModel.findOne({ tableId });
-    //   io.in(tableId).emit("updateRoom", r);
-    // }
+    const { tableId, userId } = data;
+    const room = await roomModel.findOne({
+      $and: [
+        { tableId },
+        {
+          players: {
+            $elemMatch: {
+              $and: [{ id: convertMongoId(userId) }, { turn: true }],
+            },
+          },
+        },
+      ],
+    });
+    if (room) {
+      let player = room.players.find((el) => el.turn);
+      let currentPlayerIndex = room.players.findIndex(
+        (el) => el.turn && el.action === ""
+      );
+      if (currentPlayerIndex !== -1) {
+        if (
+          player.isSplitted &&
+          player.splitSum.length - 1 > player.splitIndex
+        ) {
+          player.splitIndex += 1;
+          let isHasAce = hasAce(player.cards[player.splitIndex]);
+          let isSame = isSameCards(player.cards[player.splitIndex]);
+          const update = await roomModel.updateOne(
+            {
+              $and: [
+                { tableId: room.tableId },
+                { players: { $elemMatch: { id: player.id } } },
+              ],
+            },
+            {
+              "players.$.turn": true,
+              "players.$.splitIndex": player.splitIndex,
+              "players.$.isSameCard": isSame,
+              "players.$.hasAce": isHasAce,
+              "players.$.action": "split",
+            }
+          );
+        } else {
+          await roomModel.updateOne(
+            {
+              $and: [
+                { tableId },
+                { players: { $elemMatch: { id: player.id } } },
+              ],
+            },
+            {
+              "players.$.turn": true,
+              "players.$.action": "stand",
+            }
+          );
+        }
+      } else {
+        socket.emit("actionError", { msg: "CurrentPlayer not found" });
+      }
+    } else {
+      const r = roomModel.findOne({ tableId });
+      io.in(tableId).emit("updateRoom", r);
+    }
   } catch (error) {
     console.log("Error in standAction =>", error);
   }
