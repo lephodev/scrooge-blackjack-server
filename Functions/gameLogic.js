@@ -1174,41 +1174,41 @@ const compareSumAce = async (io, data, room) => {
 
 const compareSum = async (io, data, room) => {
   try {
-    const { tableId } = data;
-    let deck = room.deck;
-    let player = room.players.find((el) => el.turn);
-    if (player?.isSplitted) {
-      player.splitSum[player.splitIndex] += deck[0].value.value;
-      player.cards[player.splitIndex].push(deck[0]);
-      player.hasAce = false;
-    } else {
-      player.sum = player.sum + deck[0].value.value; // add sum
-      player.hasAce = false;
-      player.cards.push(deck[0]);
-    }
+    // const { tableId } = data;
+    // let deck = room.deck;
+    // let player = room.players.find((el) => el.turn);
+    // if (player?.isSplitted) {
+    //   player.splitSum[player.splitIndex] += deck[0].value.value;
+    //   player.cards[player.splitIndex].push(deck[0]);
+    //   player.hasAce = false;
+    // } else {
+    //   player.sum = player.sum + deck[0].value.value; // add sum
+    //   player.hasAce = false;
+    //   player.cards.push(deck[0]);
+    // }
 
-    console.log("DDDEEEEEECCCCC1", deck);
-    deck.shift();
-    console.log("DDDEEEEEECCCCC2", deck);
+    // console.log("DDDEEEEEECCCCC1", deck);
+    // deck.shift();
+    // console.log("DDDEEEEEECCCCC2", deck);
 
-    // await roomModel.updateOne(
-    //   {
-    //     $and: [
-    //       { tableId },
-    //       { players: { $elemMatch: { id: convertMongoId(data.userId) } } },
-    //     ],
-    //   },
-    //   {
-    //     "players.$.sum": player.sum,
-    //     "players.$.cards": player.cards,
-    //     "players.$.hasAce": player.hasAce,
-    //     "players.$.splitSum": player.splitSum,
-    //     deck,
-    //   },
-    //   { upsert: true }
-    // );
+    await roomModel.updateOne(
+      {
+        $and: [
+          { tableId },
+          { players: { $elemMatch: { id: convertMongoId(data.userId) } } },
+        ],
+      },
+      {
+        "players.$.sum": player.sum,
+        "players.$.cards": player.cards,
+        "players.$.hasAce": player.hasAce,
+        "players.$.splitSum": player.splitSum,
+        // deck,
+      },
+      { upsert: true }
+    );
     const updatedRoom = await roomModel.findOne({ tableId });
-    // await outputCardSum(io, data, updatedRoom);
+    await outputCardSum(io, data, updatedRoom);
   } catch (error) {
     console.log("Error in compare sum =>", error);
   }
