@@ -620,7 +620,7 @@ export const startPreGameTimer = async (io, socket, data) => {
 
 export const confirmBet = async (io, socket, data) => {
   try {
-    let { tableId, userId } = data;
+    let { tableId, userId, betAmount } = data;
     userId = convertMongoId(userId);
     const room = await roomModel.findOne({
       $and: [
@@ -636,7 +636,7 @@ export const confirmBet = async (io, socket, data) => {
     );
     console.log("GOT player DATA", player);
     if (player && room) {
-      if (player.betAmount < 10 || !player.betAmount) {
+      if (betAmount < 10 || !betAmount) {
         socket.emit("actionError", {
           msg: "Bet amount should be more then 10",
         });
@@ -647,6 +647,8 @@ export const confirmBet = async (io, socket, data) => {
         { $and: [{ tableId }, { players: { $elemMatch: { id: userId } } }] },
         {
           "players.$.isPlaying": true,
+          "players.$.betAmount": betAmount,
+          "players.$.wallet": player?.wallet - betAmount,
         }
       );
       if (!io.room.find((el) => el.room === tableId)?.pretimer) {
