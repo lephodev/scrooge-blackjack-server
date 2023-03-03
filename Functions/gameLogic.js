@@ -1479,13 +1479,13 @@ const finalCompareGo = async (io, data) => {
               currentWallet: users[i].wallet + players[i].wallet, //players[i].wallet,
             });
 
-            players[i].ticket = player.ticket + player.betAmount;
+            players[i].ticket = player.ticket + player.betAmount * 2;
             // players[i].wallet = player.wallet + player.betAmount * 2;
             winners.push({
               id: player.id,
               name: player.name,
               betAmount: player.betAmount,
-              winAmount: player.betAmount,
+              winAmount: player.betAmount * 2,
               action: "game-win",
             });
           } else if (sum === dealer.sum) {
@@ -1495,9 +1495,10 @@ const finalCompareGo = async (io, data) => {
               action: "game-draw",
               date: new Date(),
               betAmount: player.betAmount,
-              currentWallet: players[i].wallet + players[i].wallet,
+              currentWallet:
+                users[i].wallet + players[i].wallet + player.betAmount,
             }); // Because game is draw so it will be not add on in the ticket so Reverting back the winAmount to the user to play
-            players[i].wallet = player.wallet + player.betAmount / 2;
+            players[i].wallet = player.wallet + player.betAmount; // / 2;
             draw.push({
               id: player.id,
               name: player.name,
@@ -1516,14 +1517,14 @@ const finalCompareGo = async (io, data) => {
               currentWallet: users[i].wallet + players[i].wallet,
             });
 
-            players[i].ticket = player.ticket + player.betAmount;
+            players[i].ticket = player.ticket + player.betAmount * 2;
 
             // players[i].wallet = player.wallet + player.betAmount * 2;
             winners.push({
               id: player.id,
               name: player.name,
               betAmount: player.betAmount,
-              winAmount: player.betAmount,
+              winAmount: player.betAmount * 2,
               action: "game-win",
             });
           } else if (sum < dealer.sum && dealer.sum <= 21) {
@@ -1627,14 +1628,14 @@ const finalCompareGo = async (io, data) => {
             betAmount: player.betAmount,
             currentWallet: users[i].wallet + players[i].wallet,
           });
-          players[i].ticket = player.ticket + player.betAmount;
+          players[i].ticket = player.ticket + player.betAmount * 2;
 
           // players[i].wallet = player.wallet + player.betAmount * 2;
           winners.push({
             id: player.id,
             name: player.name,
             betAmount: player.betAmount,
-            winAmount: player.betAmount,
+            winAmount: player.betAmount * 2,
             action: "game-win",
           });
         } else if (sum === dealer.sum) {
@@ -1644,7 +1645,8 @@ const finalCompareGo = async (io, data) => {
             action: "game-draw",
             date: new Date(),
             betAmount: player.betAmount,
-            currentWallet: players[i].wallet + players[i].wallet,
+            currentWallet:
+              users[i].wallet + players[i].wallet + player.betAmount,
           });
           // In case of draw revert the bet amount
           players[i].wallet = player.wallet + player.betAmount;
@@ -1665,14 +1667,14 @@ const finalCompareGo = async (io, data) => {
             betAmount: player.betAmount,
             currentWallet: users[i].wallet + players[i].wallet,
           });
-          players[i].ticket = player.ticket + player.betAmount;
+          players[i].ticket = player.ticket + player.betAmount * 2;
 
           // players[i].wallet = player.wallet + player.betAmount * 2;
           winners.push({
             id: player.id,
             name: player.name,
             betAmount: player.betAmount,
-            winAmount: player.betAmount,
+            winAmount: player.betAmount * 2,
             action: "game-win",
           });
         } else if (sum < dealer.sum && dealer.sum <= 21) {
