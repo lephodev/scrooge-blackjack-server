@@ -469,41 +469,70 @@ export const standAction = async (io, socket, data) => {
           player.splitIndex += 1;
           let isHasAce = hasAce(player.cards[player.splitIndex]);
           let isSame = isSameCards(player.cards[player.splitIndex]);
-          const update = await roomModel.updateOne(
-            {
-              $and: [
-                { tableId: room.tableId },
-                { players: { $elemMatch: { id: player.id } } },
-              ],
-            },
-            {
-              "players.$.turn": true,
-              "players.$.splitIndex": player.splitIndex,
-              "players.$.isSameCard": isSame,
-              "players.$.hasAce": isHasAce,
-              "players.$.action": "split",
+          room.players = room.players.map((el) => {
+            if (el.id.toString() === userId.toString()) {
+              el.turn = true;
+              el.splitIndex = player.splitIndex;
+              el.isSameCard = isSame;
+              el.hasAce = isHasAce;
+              el.action = "split";
             }
-          );
+            return el;
+          });
+          // const update = await roomModel.updateOne(
+          //   {
+          //     $and: [
+          //       { tableId: room.tableId },
+          //       { players: { $elemMatch: { id: player.id } } },
+          //     ],
+          //   },
+          //   {
+          //     "players.$.turn": true,
+          //     "players.$.splitIndex": player.splitIndex,
+          //     "players.$.isSameCard": isSame,
+          //     "players.$.hasAce": isHasAce,
+          //     "players.$.action": "split",
+          //   }
+          // );
+          io.in(tableId).emit("updateRoom", room);
+          await roomModel.updateOne({
+            $and: [{ tableId }, { players: { $elemMatch: { id: player.id } } }],
+            $set: { players: room.players },
+          });
         } else {
-          await roomModel.updateOne(
-            {
-              $and: [
-                { tableId },
-                { players: { $elemMatch: { id: player.id } } },
-              ],
-            },
-            {
-              "players.$.turn": true,
-              "players.$.action": "stand",
+          room.players = room.players.map((el) => {
+            if (el.id.toString() === userId.toString()) {
+              el.turn = true;
+              el.action = "stand";
             }
-          );
+            return el;
+          });
+          // await roomModel.updateOne(
+          //   {
+          //     $and: [
+          //       { tableId },
+          //       { players: { $elemMatch: { id: player.id } } },
+          //     ],
+          //   },
+          //   {
+          //     "players.$.turn": true,
+          //     "players.$.action": "stand",
+          //   }
+          // );
+          io.in(tableId).emit("updateRoom", room);
+
+          await roomModel.updateOne({
+            $and: [{ tableId }, { players: { $elemMatch: { id: player.id } } }],
+            $set: { players: room.players },
+          });
         }
       } else {
         socket.emit("actionError", { msg: "CurrentPlayer not found" });
       }
     } else {
-      const r = roomModel.findOne({ tableId });
-      io.in(tableId).emit("updateRoom", r);
+      // const r = roomModel.findOne({ tableId });
+
+      io.in(tableId).emit("updateRoom", room);
     }
   } catch (error) {
     console.log("Error in standAction =>", error);

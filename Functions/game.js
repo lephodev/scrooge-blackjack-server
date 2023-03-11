@@ -172,35 +172,44 @@ export const joinGame = async (io, socket, data) => {
 
     let players = [...room.players];
     // push new user to players game
-    players.push({
-      name: nickname,
-      isAdmin: false,
-      wallet: amount,
-      ticket: ticket,
-      hands: hands,
-      gameJoinedAt: new Date(),
-      stats,
-      cards: [],
-      coinsBeforeStart: amount,
-      avatar: photoURI,
-      id: convertMongoId(userid),
-      betAmount: 0,
-      isPlaying: false,
-      turn: false,
-      sum: 0,
-      hasAce: false,
-      isBusted: false,
-      doubleDown: false,
-      blackjack: false,
-      isSameCard: false,
-      isSplitted: false,
-      splitSum: [],
-      splitIndex: null,
-      meetingToken,
-      isSurrender: false,
-      isActed: false,
-      action: "",
-    });
+    console.log("userid ====>", userid);
+    console.log("players ==>", players);
+    console.log(
+      "finding",
+      !players.find((el) => el.id.toString() === userid?.toString())
+    );
+    if (!players.find((el) => el.id.toString() === userid?.toString())) {
+      players.push({
+        name: nickname,
+        isAdmin: false,
+        wallet: amount,
+        ticket: ticket,
+        hands: hands,
+        gameJoinedAt: new Date(),
+        stats,
+        cards: [],
+        coinsBeforeStart: amount,
+        avatar: photoURI,
+        id: convertMongoId(userid),
+        betAmount: 0,
+        isPlaying: false,
+        turn: false,
+        sum: 0,
+        hasAce: false,
+        isBusted: false,
+        doubleDown: false,
+        blackjack: false,
+        isSameCard: false,
+        isSplitted: false,
+        splitSum: [],
+        splitIndex: null,
+        meetingToken,
+        isSurrender: false,
+        isActed: false,
+        action: "",
+      });
+    }
+
     // update players array
     const updatedRoom = await roomModel
       .findOneAndUpdate(
