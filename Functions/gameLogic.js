@@ -782,7 +782,7 @@ export const surrender = async (io, socket, data) => {
             "players.$.turn": false,
             "players.$.action": "surrender",
             $inc: {
-              "players.$.wallet": player.betAmount / 2,
+              "players.$.wallet": Math.ceil(player.betAmount / 2),
             },
           }
         );
@@ -1557,6 +1557,7 @@ const finalCompareGo = async (io, data) => {
               action: "game-win",
             });
           } else if (sum < dealer.sum && dealer.sum <= 21) {
+
             // const user = await User.findOne({
             //   _id: convertMongoId(players[i].id),
             // });
