@@ -549,16 +549,17 @@ export const doubleAction = async (io, socket, data) => {
           players: {
             $elemMatch: {
               $and: [{ id: convertMongoId(userId) }, { turn: true }],
-            },
+            },  
           },
         },
       ],
     });
+   
     if (room) {
       let deck = room.deck;
       let player = room.players.find((el) => el.turn);
       let currentPlayerIndex = room.players.findIndex((el) => el.turn);
-      if (player.wallet >= player.betAmount * 2) {
+      if (player.wallet >= player.betAmount) {
         if (player.isSplitted) {
           if (player.hasAce && deck[0].value.hasAce) {
             player.splitSum[player.splitIndex][0] =
