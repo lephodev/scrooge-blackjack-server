@@ -782,7 +782,7 @@ export const surrender = async (io, socket, data) => {
             "players.$.turn": false,
             "players.$.action": "surrender",
             $inc: {
-              "players.$.wallet": player.betAmount / 2,
+              "players.$.wallet": Math.ceil(player.betAmount / 2),
             },
           }
         );
