@@ -208,7 +208,7 @@ const socketConnection = (io) => {
               console.log("exit room called after 300000 milli sec");
               await exitRoom(io, socket, dd);
             }
-          }, 12000);
+          }, 120000);
         } else {
           console.log("FAILED TO COMPLETE DISCONNECT PART");
         }

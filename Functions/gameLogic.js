@@ -469,70 +469,41 @@ export const standAction = async (io, socket, data) => {
           player.splitIndex += 1;
           let isHasAce = hasAce(player.cards[player.splitIndex]);
           let isSame = isSameCards(player.cards[player.splitIndex]);
-          room.players = room.players.map((el) => {
-            if (el.id.toString() === userId.toString()) {
-              el.turn = true;
-              el.splitIndex = player.splitIndex;
-              el.isSameCard = isSame;
-              el.hasAce = isHasAce;
-              el.action = "split";
+          const update = await roomModel.updateOne(
+            {
+              $and: [
+                { tableId: room.tableId },
+                { players: { $elemMatch: { id: player.id } } },
+              ],
+            },
+            {
+              "players.$.turn": true,
+              "players.$.splitIndex": player.splitIndex,
+              "players.$.isSameCard": isSame,
+              "players.$.hasAce": isHasAce,
+              "players.$.action": "split",
             }
-            return el;
-          });
-          // const update = await roomModel.updateOne(
-          //   {
-          //     $and: [
-          //       { tableId: room.tableId },
-          //       { players: { $elemMatch: { id: player.id } } },
-          //     ],
-          //   },
-          //   {
-          //     "players.$.turn": true,
-          //     "players.$.splitIndex": player.splitIndex,
-          //     "players.$.isSameCard": isSame,
-          //     "players.$.hasAce": isHasAce,
-          //     "players.$.action": "split",
-          //   }
-          // );
-          io.in(tableId).emit("updateRoom", room);
-          await roomModel.updateOne({
-            $and: [{ tableId }, { players: { $elemMatch: { id: player.id } } }],
-            $set: { players: room.players },
-          });
+          );
         } else {
-          room.players = room.players.map((el) => {
-            if (el.id.toString() === userId.toString()) {
-              el.turn = true;
-              el.action = "stand";
+          await roomModel.updateOne(
+            {
+              $and: [
+                { tableId },
+                { players: { $elemMatch: { id: player.id } } },
+              ],
+            },
+            {
+              "players.$.turn": true,
+              "players.$.action": "stand",
             }
-            return el;
-          });
-          // await roomModel.updateOne(
-          //   {
-          //     $and: [
-          //       { tableId },
-          //       { players: { $elemMatch: { id: player.id } } },
-          //     ],
-          //   },
-          //   {
-          //     "players.$.turn": true,
-          //     "players.$.action": "stand",
-          //   }
-          // );
-          io.in(tableId).emit("updateRoom", room);
-
-          await roomModel.updateOne({
-            $and: [{ tableId }, { players: { $elemMatch: { id: player.id } } }],
-            $set: { players: room.players },
-          });
+          );
         }
       } else {
         socket.emit("actionError", { msg: "CurrentPlayer not found" });
       }
     } else {
-      // const r = roomModel.findOne({ tableId });
-
-      io.in(tableId).emit("updateRoom", room);
+      const r = roomModel.findOne({ tableId });
+      io.in(tableId).emit("updateRoom", r);
     }
   } catch (error) {
     console.log("Error in standAction =>", error);
@@ -549,16 +520,17 @@ export const doubleAction = async (io, socket, data) => {
           players: {
             $elemMatch: {
               $and: [{ id: convertMongoId(userId) }, { turn: true }],
-            },
+            },  
           },
         },
       ],
     });
+   
     if (room) {
       let deck = room.deck;
       let player = room.players.find((el) => el.turn);
       let currentPlayerIndex = room.players.findIndex((el) => el.turn);
-      if (player.wallet >= player.betAmount * 2) {
+      if (player.wallet >= player.betAmount) {
         if (player.isSplitted) {
           if (player.hasAce && deck[0].value.hasAce) {
             player.splitSum[player.splitIndex][0] =
