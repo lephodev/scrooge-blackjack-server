@@ -1586,7 +1586,9 @@ export const checkRoom = async (data, socket, io) => {
       // }
       // join the user in the game
       console.log("NEW USER JOIN TO THE TABLE");
-
+      if(!sitAmount){
+        socket.emit("notjoined")
+      }
       if (
         !sitAmount ||
         sitInAmount < 100 ||
