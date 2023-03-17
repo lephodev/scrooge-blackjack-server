@@ -10,7 +10,6 @@ import { leaveApiCall } from "./Functions/game.js";
 import {
   changeAdmin,
   getUserId,
-  updateInGameStatus,
 } from "./firestore/dbFetch.js";
 import mongoose from "mongoose";
 import User from "./landing-server/models/user.model.js";
@@ -254,7 +253,6 @@ app.get("/checkUserInGame/:userId", async (req, res) => {
       });
     }
   } catch (error) {
-    console.log("Error in checkUserInGame api", error);
     res.status(500).send({
       success: false,
       error: "Internal server error",
