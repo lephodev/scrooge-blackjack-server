@@ -1694,10 +1694,11 @@ export const updateSeenBy = async (io, socket, data) => {
   }
 };
 
-export const typingonChat = (io, socket, data) => {
+export const typingonChat = async(io, socket, data) => {
   try {
     const { userId, tableId, typing } = data;
-    io.in(tableId).emit("updateTypingState", { CrrUserId: userId, typing });
+    const findUser = await userModel.findOne({_id:userId},{username:1}).lean()
+    io.in(tableId).emit("updateTypingState", { CrrUserId: userId, typing,userName:findUser?.username});
   } catch (error) {
     console.log("error in typingonChat", error);
   }
