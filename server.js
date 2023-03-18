@@ -219,10 +219,12 @@ app.get("/leaveGame/:tableId/:userId", async (req, res) => {
     } else {
       let roomdata = await roomModel.findOne({ tableId }).lean();
       if (!roomdata?.players?.find((el) => el.id === userId)) {
-        updateInGameStatus(userId);
-        return res.send({
-          success: true,
-        });
+        const ress = await leaveApiCall(roomdata,userId);
+        if (ress) {
+          return res.send({
+            success: true,
+          });
+        }
       }
     }
   } catch (error) {
