@@ -131,6 +131,7 @@ export const playerTurnTimer = async (io, data) => {
             (currentPlayer.action === "surrender" ||
               currentPlayer.action === "stand" ||
               currentPlayer.action === "doubleDown" ||
+              currentPlayer.action === "insurance" ||
               currentPlayer.isBusted ||
               currentPlayer.doubleDown ||
               currentPlayer.blackjack)
@@ -236,7 +237,9 @@ export const nextPlayerTurn = async (
       players[currentPlayerIndex]
     ) {
       players[currentPlayerIndex].turn = false;
-      players[currentPlayerIndex].action = "stand";
+      if (players[currentPlayerIndex].action !== "insurance") {
+        players[currentPlayerIndex].action = "stand";
+      }
     } else {
       currentPlayerIndex -= 1;
       console.log("player leave =>", currentPlayerIndex);
@@ -520,12 +523,12 @@ export const doubleAction = async (io, socket, data) => {
           players: {
             $elemMatch: {
               $and: [{ id: convertMongoId(userId) }, { turn: true }],
-            },  
+            },
           },
         },
       ],
     });
-   
+
     if (room) {
       let deck = room.deck;
       let player = room.players.find((el) => el.turn);
@@ -1851,5 +1854,76 @@ export const hasAce = (cards) => {
   } catch (error) {
     console.log("Error in hasAce check =>", error);
     return false;
+  }
+};
+
+export const insuranceTaken = async (io, socket, data) => {
+  try {
+    console.log("data in insurance", data);
+    const { tableId, userId, wallet } = data;
+
+    let table = await roomModel.findOne({
+      _id: tableId,
+    });
+
+    let dealer = table.dealer;
+    let crrDeck = table.deck;
+
+    dealer?.cards?.push(crrDeck.shift());
+
+    let dealerTotalValue = 0;
+    dealer?.cards.forEach((el, i) => {
+      console.log("el ==>", typeof el.value.value, el);
+      if (typeof el.value.value === "object") {
+        dealerTotalValue += el.value?.value[1];
+      } else {
+        dealerTotalValue += el.value?.value;
+      }
+    });
+
+    console.log("dealerTotalValue ==>", dealerTotalValue);
+
+    let players = [...table.players];
+    players = players.map((el) => {
+      if (el.id.toString() === userId.toString()) {
+        console.log("got pplayer id");
+        if (dealerTotalValue === 21) {
+          el.wallet = el.wallet + el.betAmount;
+          el.isPlaying = false;
+          el.action = "insurance";
+          el.turn = true;
+        } else {
+          console.log("enterd in second condition", el.betAmount);
+          el.wallet = el.wallet - el.betAmount / 2;
+          console.log("new wallet", el.wallet);
+          el.action = "insurance";
+          el.turn = true;
+        }
+      }
+      return el;
+    });
+
+    console.log("new action outside from loop", players[0].action);
+
+    table.dealer = dealer;
+    table.deck = crrDeck;
+    table.players = players;
+
+    io.in(tableId).emit("updateRoom", table);
+
+    await roomModel.updateOne(
+      {
+        _id: tableId,
+      },
+      {
+        dealer: dealer,
+        deck: crrDeck,
+        players: players,
+      }
+    );
+
+    // console.log("table ====>", table);
+  } catch (error) {
+    console.log("Error in insurance functioon", error);
   }
 };

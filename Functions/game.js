@@ -207,6 +207,7 @@ export const joinGame = async (io, socket, data) => {
         isSurrender: false,
         isActed: false,
         action: "",
+        insuranceAmount: 0,
       });
     }
 
@@ -717,6 +718,10 @@ export const startGame = async (io, data) => {
           }
         });
         if (item === 1) {
+          const index = deck.findIndex((el) => el.value.card === "A");
+          let temp = deck[0];
+          deck[0] = deck[index];
+          deck[index] = temp;
           dealer.cards.push(deck[0]);
           deck.shift();
           dealer.sum = dealer.cards[0].value.value;

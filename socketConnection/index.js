@@ -23,6 +23,7 @@ import {
   splitAction,
   standAction,
   surrender,
+  insuranceTaken,
 } from "../Functions/gameLogic.js";
 import roomModel from "../modals/roomModal.js";
 import { guid } from "./utils.js";
@@ -139,6 +140,14 @@ const socketConnection = (io) => {
 
     socket.on("typingOnChat", async (data) => {
       await typingonChat(io, socket, data);
+    });
+
+    socket.on("insurance", async (data) => {
+      console.log("insurance socket emitted");
+      await insuranceTaken(io, socket, data);
+      io.in(data.tableId).emit("action", {
+        type: "insurance",
+      });
     });
 
     // disconnect from server
