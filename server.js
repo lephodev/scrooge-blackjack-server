@@ -488,7 +488,7 @@ app.post("/refillWallet", auth(), async (req, res) => {
     if (amount > user.wallet) {
       return res
         .status(403)
-        .send({ msg: "You dont have balance in your wallet" });
+        .send({ msg: "You don't have enough balance in your wallet" });
     }
 
     await roomModel.updateOne(
