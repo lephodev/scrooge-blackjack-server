@@ -151,6 +151,15 @@ app.get("/deleteStuckTable/:tableId", async (req, res) => {
   try {
     const { tableId } = req.params;
     const room = await roomModel.deleteOne({ tableId });
+    let copy = {...io.typingUser};
+    if(copy){
+      for(let key in copy){
+        if(copy[key][tableId]){
+          delete copy[key]
+        }
+      }
+      io.typingUser = copy;
+  }
     if (room) {
       res.status(200).send({
         success: true,
@@ -181,6 +190,14 @@ app.get("/leaveGame/:tableId/:userId", async (req, res) => {
         await roomModel.deleteOne({
           tableId,
         });
+        if(copy){
+          for(let key in copy){
+            if(copy[key][tableId]){
+              delete copy[key]
+            }
+          }
+          io.typingUser = copy;
+        }
         return res.send({
           success: true,
         });
