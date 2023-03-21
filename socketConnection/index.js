@@ -30,6 +30,7 @@ import { guid } from "./utils.js";
 const socketConnection = (io) => {
   io.users = [];
   io.room = [];
+  io.typingPlayers={};
   const rooms = [];
   io.on("connection", (socket) => {
     socket.on("checkTable", async (data) => {
