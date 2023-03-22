@@ -95,6 +95,7 @@ export const createNewGame = async (io, socket, data) => {
           isSurrender: false,
           isActed: false,
           action: "",
+          isInsured: false,
         },
       ],
       remainingPretimer: 5,
@@ -115,6 +116,8 @@ export const createNewGame = async (io, socket, data) => {
         hasAce: false,
         sum: 0,
       },
+      askForInsurance: false,
+      actedForInsurace: 0,
     });
     if (newRoom) {
       console.log("NEW ROOM CREATED");
@@ -207,6 +210,8 @@ export const joinGame = async (io, socket, data) => {
         isSurrender: false,
         isActed: false,
         action: "",
+        insuranceAmount: 0,
+        isInsured: false,
       });
     }
 
@@ -501,14 +506,14 @@ export const exitRoom = async (io, socket, data) => {
         await roomModel.deleteOne({
           tableId,
         });
-        if(copy){
-          for(let key in copy){
-            if(copy[key][tableId]){
-              delete copy[key]
+        if (copy) {
+          for (let key in copy) {
+            if (copy[key][tableId]) {
+              delete copy[key];
             }
           }
           io.typingUser = copy;
-      }
+        }
         console.log("GAME FINISHED ON LINE 394");
         io.in(tableId).emit("gameFinished", {
           msg: "All player left, game finished",
@@ -576,14 +581,14 @@ export const exitRoom = async (io, socket, data) => {
           await roomModel.deleteOne({
             tableId,
           });
-          if(copy){
-            for(let key in copy){
-              if(copy[key][tableId]){
-                delete copy[key]
+          if (copy) {
+            for (let key in copy) {
+              if (copy[key][tableId]) {
+                delete copy[key];
               }
             }
             io.typingUser = copy;
-        }
+          }
           console.log("GAME FINISHED ON LINE 458");
           io.in(tableId).emit("gameFinished", {
             msg: "All player left, game finished",
@@ -615,7 +620,7 @@ export const startPreGameTimer = async (io, socket, data) => {
       const room = await roomModel.findOne({
         $and: [{ tableId }, { gamestart: false }],
       });
-      if (room?.remainingPretimer >= 0) {
+      if (room?.remainingPretimer >= -1) {
         console.log("REMAINING TIMER ", room.remainingPretimer);
         io.in(tableId).emit("preTimer", {
           timer: 5,
@@ -651,7 +656,7 @@ export const confirmBet = async (io, socket, data) => {
       $and: [
         { tableId },
         { gamestart: false },
-        { remainingPretimer: { $gt: 1 } },
+        { remainingPretimer: { $gt: -1 } },
       ],
     });
     console.log("GOT ROOM DATA", !!room);
@@ -733,6 +738,10 @@ export const startGame = async (io, data) => {
           }
         });
         if (item === 1) {
+          const index = deck.findIndex((el) => el.value.card === "A");
+          let temp = deck[0];
+          deck[0] = deck[index];
+          deck[index] = temp;
           dealer.cards.push(deck[0]);
           deck.shift();
           dealer.sum = dealer.cards[0].value.value;
@@ -743,6 +752,11 @@ export const startGame = async (io, data) => {
       let firstPlayingPLayer = players.findIndex(
         (el) => el.isPlaying && !el.blackjack
       );
+
+      players = players.map((el) => {
+        el.isInsured = false;
+        return el;
+      });
 
       if (firstPlayingPLayer !== -1) {
         players[firstPlayingPLayer].turn = true;
@@ -755,6 +769,8 @@ export const startGame = async (io, data) => {
             deck,
             gameCardStats: history,
             firstGameTime: room.firstGameTime ? room.firstGameTime : new Date(),
+            actedForInsurace: 0,
+            askForInsurance: false,
           }
         );
         const updatedRoom = await roomModel
@@ -1602,8 +1618,8 @@ export const checkRoom = async (data, socket, io) => {
       // }
       // join the user in the game
       console.log("NEW USER JOIN TO THE TABLE");
-      if(!sitAmount){
-      return  socket.emit("notjoined")
+      if (!sitAmount) {
+        return socket.emit("notjoined");
       }
       if (
         !sitAmount ||
@@ -1710,13 +1726,23 @@ export const updateSeenBy = async (io, socket, data) => {
   }
 };
 
-export const typingonChat = async(io, socket, data) => {
+export const typingonChat = async (io, socket, data) => {
   try {
-   
     const { userId, tableId, typing } = data;
-    const findUser = await userModel.findOne({_id:userId},{username:1}).lean()
-    io.typingPlayers[userId] = {typing,userName:findUser?.username,roomId:tableId};
-    io.in(tableId).emit("updateTypingState", { CrrUserId: userId, typing,userName:findUser?.username,typingUser:io.typingPlayers});
+    const findUser = await userModel
+      .findOne({ _id: userId }, { username: 1 })
+      .lean();
+    io.typingPlayers[userId] = {
+      typing,
+      userName: findUser?.username,
+      roomId: tableId,
+    };
+    io.in(tableId).emit("updateTypingState", {
+      CrrUserId: userId,
+      typing,
+      userName: findUser?.username,
+      typingUser: io.typingPlayers,
+    });
   } catch (error) {
     console.log("error in typingonChat", error);
   }
