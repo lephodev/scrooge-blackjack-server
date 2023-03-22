@@ -151,6 +151,15 @@ app.get("/deleteStuckTable/:tableId", async (req, res) => {
   try {
     const { tableId } = req.params;
     const room = await roomModel.deleteOne({ tableId });
+    let copy = {...io.typingUser};
+    if(copy){
+      for(let key in copy){
+        if(copy[key][tableId]){
+          delete copy[key]
+        }
+      }
+      io.typingUser = copy;
+  }
     if (room) {
       res.status(200).send({
         success: true,
@@ -172,22 +181,30 @@ app.get("/leaveGame/:tableId/:userId", async (req, res) => {
     const { tableId, userId } = req.params;
     let roomdata = await roomModel
       .findOne({
-        $and: [{ tableId }, { players: { $elemMatch: { id: userId } } }],
+        $and: [{ tableId }, { players: { $elemMatch: { id: convertMongoId(userId) } } }],
       })
       .lean();
-    if (roomdata && roomdata.players.length <= 1) {
+    if (roomdata && roomdata.players?.length <= 1) {
       const ress = await leaveApiCall(roomdata);
       if (ress) {
         await roomModel.deleteOne({
           tableId,
         });
+        if(copy){
+          for(let key in copy){
+            if(copy[key][tableId]){
+              delete copy[key]
+            }
+          }
+          io.typingUser = copy;
+        }
         return res.send({
           success: true,
         });
       }
-    } else if (roomdata && roomdata.players.length) {
-      let newAdmin = roomdata.players.find((el) => el.id !== userId);
-      let leaveUser = roomdata.players.find((el) => el.id === userId);
+    } else if (roomdata && roomdata.players.length>1) {
+      let newAdmin = roomdata.players.find((el) => el.id.toString() !== userId.toString());
+      let leaveUser = roomdata.players.find((el) => el.id.toString() === userId.toString());
       let leaveReq = [...roomdata.leaveReq];
       leaveReq.push(leaveUser.id);
       if (roomdata.hostId === userId)
@@ -218,11 +235,13 @@ app.get("/leaveGame/:tableId/:userId", async (req, res) => {
       }
     } else {
       let roomdata = await roomModel.findOne({ tableId }).lean();
-      if (!roomdata?.players?.find((el) => el.id === userId)) {
-        updateInGameStatus(userId);
-        return res.send({
-          success: true,
-        });
+      if (!roomdata?.players?.find((el) => el.id.toString() === userId.toString())) {
+        const ress = await leaveApiCall(roomdata,userId);
+        if (ress) {
+          return res.send({
+            success: true,
+          });
+        }
       }
     }
   } catch (error) {

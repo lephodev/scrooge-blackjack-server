@@ -502,6 +502,14 @@ export const exitRoom = async (io, socket, data) => {
         await roomModel.deleteOne({
           tableId,
         });
+        if (copy) {
+          for (let key in copy) {
+            if (copy[key][tableId]) {
+              delete copy[key];
+            }
+          }
+          io.typingUser = copy;
+        }
         console.log("GAME FINISHED ON LINE 394");
         io.in(tableId).emit("gameFinished", {
           msg: "All player left, game finished",
@@ -569,6 +577,14 @@ export const exitRoom = async (io, socket, data) => {
           await roomModel.deleteOne({
             tableId,
           });
+          if (copy) {
+            for (let key in copy) {
+              if (copy[key][tableId]) {
+                delete copy[key];
+              }
+            }
+            io.typingUser = copy;
+          }
           console.log("GAME FINISHED ON LINE 458");
           io.in(tableId).emit("gameFinished", {
             msg: "All player left, game finished",
@@ -1591,8 +1607,8 @@ export const checkRoom = async (data, socket, io) => {
       // }
       // join the user in the game
       console.log("NEW USER JOIN TO THE TABLE");
-      if(!sitAmount){
-      return  socket.emit("notjoined")
+      if (!sitAmount) {
+        return socket.emit("notjoined");
       }
       if (
         !sitAmount ||
@@ -1702,12 +1718,19 @@ export const updateSeenBy = async (io, socket, data) => {
 export const typingonChat = async (io, socket, data) => {
   try {
     const { userId, tableId, typing } = data;
-    const user = await userModel.findOne({ _id: userId });
-    console.log("typing on chat ---", user);
+    const findUser = await userModel
+      .findOne({ _id: userId }, { username: 1 })
+      .lean();
+    io.typingPlayers[userId] = {
+      typing,
+      userName: findUser?.username,
+      roomId: tableId,
+    };
     io.in(tableId).emit("updateTypingState", {
       CrrUserId: userId,
       typing,
-      userName: user.username,
+      userName: findUser?.username,
+      typingUser: io.typingPlayers,
     });
   } catch (error) {
     console.log("error in typingonChat", error);
