@@ -95,6 +95,7 @@ export const createNewGame = async (io, socket, data) => {
           isSurrender: false,
           isActed: false,
           action: "",
+          isInsured: false,
         },
       ],
       remainingPretimer: 5,
@@ -115,6 +116,8 @@ export const createNewGame = async (io, socket, data) => {
         hasAce: false,
         sum: 0,
       },
+      askForInsurance: false,
+      actedForInsurace: 0,
     });
     if (newRoom) {
       console.log("NEW ROOM CREATED");
@@ -208,6 +211,7 @@ export const joinGame = async (io, socket, data) => {
         isActed: false,
         action: "",
         insuranceAmount: 0,
+        isInsured: false,
       });
     }
 
@@ -616,7 +620,7 @@ export const startPreGameTimer = async (io, socket, data) => {
       const room = await roomModel.findOne({
         $and: [{ tableId }, { gamestart: false }],
       });
-      if (room?.remainingPretimer >= 0) {
+      if (room?.remainingPretimer >= -1) {
         console.log("REMAINING TIMER ", room.remainingPretimer);
         io.in(tableId).emit("preTimer", {
           timer: 5,
@@ -652,7 +656,7 @@ export const confirmBet = async (io, socket, data) => {
       $and: [
         { tableId },
         { gamestart: false },
-        { remainingPretimer: { $gt: 1 } },
+        { remainingPretimer: { $gt: -1 } },
       ],
     });
     console.log("GOT ROOM DATA", !!room);
@@ -749,6 +753,11 @@ export const startGame = async (io, data) => {
         (el) => el.isPlaying && !el.blackjack
       );
 
+      players = players.map((el) => {
+        el.isInsured = false;
+        return el;
+      });
+
       if (firstPlayingPLayer !== -1) {
         players[firstPlayingPLayer].turn = true;
         await roomModel.updateOne(
@@ -760,6 +769,8 @@ export const startGame = async (io, data) => {
             deck,
             gameCardStats: history,
             firstGameTime: room.firstGameTime ? room.firstGameTime : new Date(),
+            actedForInsurace: 0,
+            askForInsurance: false,
           }
         );
         const updatedRoom = await roomModel

@@ -24,6 +24,8 @@ import {
   standAction,
   surrender,
   insuranceTaken,
+  denyInsurance,
+  doInsurance,
 } from "../Functions/gameLogic.js";
 import roomModel from "../modals/roomModal.js";
 import { guid } from "./utils.js";
@@ -31,7 +33,7 @@ import { guid } from "./utils.js";
 const socketConnection = (io) => {
   io.users = [];
   io.room = [];
-  io.typingPlayers={};
+  io.typingPlayers = {};
   const rooms = [];
   io.on("connection", (socket) => {
     socket.on("checkTable", async (data) => {
@@ -149,6 +151,14 @@ const socketConnection = (io) => {
       io.in(data.tableId).emit("action", {
         type: "insurance",
       });
+    });
+
+    socket.on("doInsure", async (data) => {
+      await doInsurance(io, socket, data);
+    });
+
+    socket.on("denyInsurance", async (data) => {
+      await denyInsurance(io, socket, data);
     });
 
     // disconnect from server

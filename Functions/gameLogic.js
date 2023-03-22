@@ -105,7 +105,8 @@ export const playerTurnTimer = async (io, data) => {
     );
     console.log("player turn timer", { currentPlayer });
     if (currentPlayerIndex === -1) {
-      dealerTurn(io, data);
+      console.log("dealer has ace ========>", room.dealer.hasAce);
+      await dealerTurn(io, data);
       return;
     }
 
@@ -131,7 +132,6 @@ export const playerTurnTimer = async (io, data) => {
             (currentPlayer.action === "surrender" ||
               currentPlayer.action === "stand" ||
               currentPlayer.action === "doubleDown" ||
-              currentPlayer.action === "insurance" ||
               currentPlayer.isBusted ||
               currentPlayer.doubleDown ||
               currentPlayer.blackjack)
@@ -245,16 +245,27 @@ export const nextPlayerTurn = async (
       console.log("player leave =>", currentPlayerIndex);
     }
     if (currentPlayerIndex === room.players.length - 1) {
+      let dealerHasAce = false;
+      if (room.dealer.hasAce) {
+        dealerHasAce = true;
+      }
       setTimeout(async () => {
-        await roomModel.updateOne(
+        const table = await roomModel.findOneAndUpdate(
           { tableId: data.tableId },
           {
             players,
+            askForInsurance: dealerHasAce,
           }
         );
         const upRoom = await roomModel.findOne({ tableId: data.tableId });
         io.in(data.tableId).emit("updateRoom", upRoom);
-        await dealerTurn(io, data);
+        console.log("Dealer turn executes from next player turn");
+        if (room.dealer.hasAce) {
+          // io.in(data.tableId).emit("updateRoom", table);
+          checkInsuranceAsk(io, table);
+        } else {
+          await dealerTurn(io, data);
+        }
       }, 500);
     } else if (
       players[currentPlayerIndex + 1]?.blackjack ||
@@ -279,6 +290,140 @@ export const nextPlayerTurn = async (
       await playerTurnTimer(io, data);
   } catch (error) {
     console.log("Error in nextPlayerTurn =>", error);
+  }
+};
+
+const checkInsuranceAsk = async (io, room) => {
+  try {
+    let players = [...room.players];
+    console.log("player to check ==>", players);
+    let isAnyOneForInsurance = false;
+    for (let el of players) {
+      console.log("el ==>", el);
+      if (
+        el.isPlaying &&
+        !el.isBusted &&
+        !el.blackjack &&
+        !el.isSurrender &&
+        el.wallet >= el.betAmount / 2
+      ) {
+        isAnyOneForInsurance = true;
+        break;
+      }
+    }
+    console.log(
+      "isAnyOneForInsurance ==>",
+      isAnyOneForInsurance,
+      players[0].wallet >= players[0].betAmount / 2
+    );
+    if (!isAnyOneForInsurance) {
+      await dealerTurn(io, { tableId: room._id.toString() });
+    } else {
+      io.in(room._id.toString()).emit("askForInsurance", {
+        players: room.players,
+      });
+      setTimeout(() => {
+        checkEveryOneHasInsuredOrNot(io, { tableId: room._id.toString() });
+      }, 500);
+    }
+  } catch (error) {
+    console.log("error in checkInsuranceAsk", error);
+  }
+};
+
+const checkEveryOneHasInsuredOrNot = async (io, data) => {
+  try {
+    const { tableId } = data;
+    const table = await roomModel.findOne({
+      _id: tableId,
+    });
+    let intervalCount = 0;
+    let playingCount = 0;
+    for (let el of table.players) {
+      console.log("player -->", el.sum, !(el.sum >= 21));
+      if (
+        el.isPlaying &&
+        !el.isBusted &&
+        !el.blackjack &&
+        !el.isSurrender &&
+        el.wallet >= el.betAmount / 2 &&
+        !(el.sum >= 21)
+      ) {
+        playingCount++;
+      }
+    }
+
+    let interval = setInterval(async () => {
+      if (intervalCount > 10) {
+        checkInsurance(io, data);
+        clearInterval(interval);
+        io.in(table._id.toString()).emit("closeInsurancePopUp");
+      } else {
+        const acted = await checkEveryOneActed(io, data, playingCount);
+        if (acted) {
+          clearInterval(interval);
+        }
+        intervalCount++;
+      }
+    }, 1000);
+  } catch (err) {
+    console.log("error in checkEveryOneHasInsuredOrNot", err);
+  }
+};
+
+const checkEveryOneActed = async (io, data, playingCount) => {
+  try {
+    const { tableId } = data;
+    const table = await roomModel.findOne({ _id: tableId });
+    console.log(
+      "playing count ===>",
+      typeof playingCount,
+      typeof table.actedForInsurace
+    );
+    if (playingCount === table.actedForInsurace) {
+      console.log("enterd in playing count");
+      await checkInsurance(io, data);
+      return true;
+    }
+  } catch (error) {
+    console.log("error in checkInsuranceAsk", error);
+  }
+};
+
+const checkInsurance = async (io, data) => {
+  try {
+    const { tableId } = data;
+    const table = await roomModel.findOne({ _id: tableId });
+    let players = [...table.players];
+    let insuredPlayersId = [];
+    let cardForDealer = table.deck[0];
+    let dealerValue = 11;
+    console.log("dealer card value ======>", cardForDealer);
+    if (cardForDealer.value.hasAce) {
+      dealerValue += 1;
+    } else {
+      dealerValue += cardForDealer.value.value;
+    }
+
+    players = players.map((el) => {
+      if (el.isInsured) {
+        insuredPlayersId.push(el.id);
+        el.wallet += dealerValue === 21 ? el.betAmount : 0;
+      }
+    });
+    console.log("dealerValue ====>", dealerValue);
+    if (dealerValue === 21) {
+      io.in(table._id.toString()).emit("insuranceWin", {
+        playerIds: insuredPlayersId,
+      });
+    } else {
+      io.in(table._id.toString()).emit("insuranceLoose", {
+        playerIds: insuredPlayersId,
+      });
+    }
+    await dealerTurn(io, data);
+  } catch (error) {
+    console.log("error in checkInsuranceAsk", error);
   }
 };
 
@@ -1925,5 +2070,42 @@ export const insuranceTaken = async (io, socket, data) => {
     // console.log("table ====>", table);
   } catch (error) {
     console.log("Error in insurance functioon", error);
+  }
+};
+
+export const doInsurance = async (io, socket, data) => {
+  try {
+    console.log("doInsurance executed ==>", data);
+    const { tableId, userId } = data;
+    const table = await roomModel.findOne({ _id: tableId });
+    let players = [...table.players];
+    players = players.map((el) => {
+      if (el.id.toString() === userId.toString()) {
+        el.isInsured = true;
+        el.wallet -= el.betAmount / 2;
+      }
+      return el;
+    });
+    const updatedRoom = await roomModel.findOneAndUpdate(
+      { _id: tableId },
+      { players: players, $inc: { actedForInsurace: 1 } }
+    );
+    io.in(data.tableId).emit("updateRoom", updatedRoom);
+  } catch (error) {
+    console.log("Error in doInsurance", error);
+  }
+};
+
+export const denyInsurance = async (io, socket, data) => {
+  try {
+    console.log("denyInsurance executed ==>", data);
+    const { tableId } = data;
+    const updatedRoom = await roomModel.findOneAndUpdate(
+      { _id: tableId },
+      { $inc: { actedForInsurace: 1 } }
+    );
+    io.in(data.tableId).emit("updateRoom", updatedRoom);
+  } catch (error) {
+    console.log("Error in denyInsurance", error);
   }
 };
