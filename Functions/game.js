@@ -1260,15 +1260,29 @@ const userTotalWinAmount = (coinsBeforeJoin, hands, userId, roomId, wallet) => {
 
   // userBalanceNow = parseFloat(wallet);
   hands.forEach((elHand) => {
-    const { action, amount, betAmount, currentWallet } = elHand;
+    const {
+      action,
+      amount,
+      betAmount,
+      currentWallet,
+      previousWallet,
+      previousTickets,
+      currentTickets,
+    } = elHand;
 
     transactions.push({
       userId,
       roomId,
-      amount: action === "game-lose" ? -amount : amount,
+      amount:
+        action === "game-lose" || action === "game-insurance"
+          ? -amount
+          : amount,
       transactionDetails: {},
       updatedWallet: currentWallet,
       transactionType: "blackjack",
+      prevWallet: previousWallet,
+      prevTicket: previousTickets,
+      updatedTicket: currentTickets,
       status: action,
     });
 

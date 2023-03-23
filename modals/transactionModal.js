@@ -10,6 +10,8 @@ const transactionSchema = new Schema(
     amount: { type: Number },
     prevWallet: { type: Number, default: 0 },
     updatedWallet: { type: Number, default: 0 },
+    prevTicket: { type: Number, default: 0 },
+    updatedTicket: { type: Number, default: 0 },
     transactionDetails: {},
     tournamentId: { type: String },
     transactionType: { type: String, enum: ["poker", "blackjack", "slot"] },

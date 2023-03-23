@@ -1,5 +1,6 @@
 import { getUpdatedStats } from "../firestore/dbFetch.js";
 import roomModel from "../modals/roomModal.js";
+import userModel from "./../landing-server/models/user.model.js";
 import { findLoserAndWinner, finishHandApiCall, leaveApiCall } from "./game.js";
 import transactionModel from "../modals/transactionModal.js";
 import mongoose from "mongoose";
@@ -1610,7 +1611,11 @@ const finalCompareGo = async (io, data) => {
               date: new Date(),
               isWatcher: false,
               betAmount: player.betAmount,
+              previousWallet:
+                users[i].wallet + players[i].wallet + player.betAmount,
               currentWallet: users[i].wallet + players[i].wallet,
+              previousTickets: players[i].ticket,
+              currentTickets: players[i].ticket,
             });
           } else if (sum <= 21 && sum > dealer.sum) {
             // Devide betAmount by half because when there split so there is two bet of 10 and 10 so the total bet amount is 20
@@ -1625,7 +1630,11 @@ const finalCompareGo = async (io, data) => {
               action: "game-win",
               date: new Date(),
               betAmount: player.betAmount,
+              previousWallet:
+                users[i].wallet + players[i].wallet + player.betAmount,
               currentWallet: users[i].wallet + players[i].wallet, //players[i].wallet,
+              previousTickets: players[i].ticket,
+              currentTickets: players[i].ticket + player.betAmount * 2,
             });
 
             players[i].ticket = player.ticket + player.betAmount * 2;
@@ -1644,8 +1653,12 @@ const finalCompareGo = async (io, data) => {
               action: "game-draw",
               date: new Date(),
               betAmount: player.betAmount,
+              previousWallet:
+                users[i].wallet + players[i].wallet + player.betAmount,
               currentWallet:
                 users[i].wallet + players[i].wallet + player.betAmount,
+              previousTickets: players[i].ticket,
+              currentTickets: players[i].ticket,
             }); // Because game is draw so it will be not add on in the ticket so Reverting back the winAmount to the user to play
             players[i].wallet = player.wallet + player.betAmount; // / 2;
             draw.push({
@@ -1663,7 +1676,11 @@ const finalCompareGo = async (io, data) => {
               action: "game-win",
               date: new Date(),
               betAmount: player.betAmount,
+              previousWallet:
+                users[i].wallet + players[i].wallet + player.betAmount,
               currentWallet: users[i].wallet + players[i].wallet,
+              previousTickets: players[i].ticket,
+              currentTickets: players[i].ticket + player.betAmount * 2,
             });
 
             players[i].ticket = player.ticket + player.betAmount * 2;
@@ -1691,7 +1708,11 @@ const finalCompareGo = async (io, data) => {
               action: "game-lose",
               date: new Date(),
               betAmount: player.betAmount,
+              previousWallet:
+                users[i].wallet + players[i].wallet + player.betAmount,
               currentWallet: users[i].wallet + players[i].wallet,
+              previousTickets: players[i].ticket,
+              currentTickets: players[i].ticket,
             });
           }
         });
@@ -1721,7 +1742,11 @@ const finalCompareGo = async (io, data) => {
             action: "game-lose",
             date: new Date(),
             betAmount: player.betAmount,
+            previousWallet:
+              users[i].wallet + players[i].wallet + player.betAmount,
             currentWallet: users[i].wallet + players[i].wallet,
+            previousTickets: players[i].ticket,
+            currentTickets: players[i].ticket,
           });
           console.log("Hands ===== >", players[i].hands);
           return;
@@ -1736,7 +1761,12 @@ const finalCompareGo = async (io, data) => {
             action: "game-win",
             date: new Date(),
             betAmount: player.betAmount,
+            previousWallet:
+              users[i].wallet + players[i].wallet + player.betAmount,
             currentWallet: users[i].wallet + players[i].wallet,
+            previousTickets: players[i].ticket,
+            currentTickets:
+              player.ticket + player.betAmount * 1.5 + player.betAmount,
           });
           players[i].ticket =
             player.ticket + player.betAmount * 1.5 + player.betAmount;
@@ -1763,7 +1793,11 @@ const finalCompareGo = async (io, data) => {
             date: new Date(),
             isWatcher: false,
             betAmount: player.betAmount,
+            previousWallet:
+              users[i].wallet + players[i].wallet + player.betAmount,
             currentWallet: users[i].wallet + players[i].wallet,
+            previousTickets: players[i].ticket,
+            currentTickets: players[i].ticket,
           });
         } else if (sum <= 21 && sum > dealer.sum) {
           // const user = await User.findOne({
@@ -1775,7 +1809,11 @@ const finalCompareGo = async (io, data) => {
             action: "game-win",
             date: new Date(),
             betAmount: player.betAmount,
+            previousWallet:
+              users[i].wallet + players[i].wallet + player.betAmount,
             currentWallet: users[i].wallet + players[i].wallet,
+            previousTickets: players[i].ticket,
+            currentTickets: players[i].ticket + player.betAmount * 2,
           });
           players[i].ticket = player.ticket + player.betAmount * 2;
 
@@ -1794,8 +1832,12 @@ const finalCompareGo = async (io, data) => {
             action: "game-draw",
             date: new Date(),
             betAmount: player.betAmount,
+            previousWallet:
+              users[i].wallet + players[i].wallet + player.betAmount,
             currentWallet:
               users[i].wallet + players[i].wallet + player.betAmount,
+            previousTickets: players[i].ticket,
+            currentTickets: players[i].ticket,
           });
           // In case of draw revert the bet amount
           players[i].wallet = player.wallet + player.betAmount;
@@ -1814,7 +1856,11 @@ const finalCompareGo = async (io, data) => {
             action: "game-win",
             date: new Date(),
             betAmount: player.betAmount,
+            previousWallet:
+              users[i].wallet + players[i].wallet + player.betAmount,
             currentWallet: users[i].wallet + players[i].wallet,
+            previousTickets: players[i].ticket,
+            currentTickets: players[i].ticket + player.betAmount * 2,
           });
           players[i].ticket = player.ticket + player.betAmount * 2;
 
@@ -1841,7 +1887,11 @@ const finalCompareGo = async (io, data) => {
             date: new Date(),
             isWatcher: false,
             betAmount: player.betAmount,
+            previousWallet:
+              users[i].wallet + players[i].wallet + player.betAmount,
             currentWallet: users[i].wallet + players[i].wallet,
+            previousTickets: players[i].ticket,
+            currentTickets: players[i].ticket,
           });
         }
       }
@@ -2078,10 +2128,22 @@ export const doInsurance = async (io, socket, data) => {
     console.log("doInsurance executed ==>", data);
     const { tableId, userId } = data;
     const table = await roomModel.findOne({ _id: tableId });
+    const user = await userModel.findOne({ _id: userId });
     let players = [...table.players];
     players = players.map((el) => {
       if (el.id.toString() === userId.toString()) {
         el.isInsured = true;
+        el.hands.push({
+          amount: el.betAmount / 2,
+          action: "game-insurance",
+          isWatcher: false,
+          betAmount: el.betAmount / 2,
+          previousWallet: el.wallet + user.wallet + el.betAmount,
+          currentWallet:
+            el.wallet - el.betAmount / 2 + user.wallet + el.betAmount,
+          previousTickets: el.ticket + user.ticket,
+          currentTickets: el.ticket + user.ticket,
+        });
         el.wallet -= el.betAmount / 2;
       }
       return el;
