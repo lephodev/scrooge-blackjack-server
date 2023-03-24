@@ -873,6 +873,8 @@ export const splitAction = async (io, socket, data) => {
         );
       } else {
         socket.emit("actionError", { msg: "Not enough balance" });
+        const r = roomModel.findOne({ tableId });
+        io.in(tableId).emit("updateRoom", r);
       }
     } else {
       const r = roomModel.findOne({ tableId });
