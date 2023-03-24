@@ -662,7 +662,7 @@ export const standAction = async (io, socket, data) => {
 export const doubleAction = async (io, socket, data) => {
   try {
     const { tableId, userId } = data;
-    const room = await roomModel.findOne({
+    let room = await roomModel.findOne({
       $and: [
         { tableId },
         {
@@ -745,12 +745,25 @@ export const doubleAction = async (io, socket, data) => {
         );
         const updatedRoom = await roomModel.findOne({ tableId });
         if (player.hasAce) {
-          await outputCardSumAce(io, data, updatedRoom);
+          room = await outputCardSumAce(io, data, updatedRoom);
         } else {
-          await outputCardSum(io, data, updatedRoom);
+          room = await outputCardSum(io, data, updatedRoom);
         }
+        io.in(tableId).emit("updateRoom", room);
+        const { players, deck: updatedDeck } = room;
+        await roomModel.updateOne(
+          {
+            _id: tableId,
+          },
+          {
+            players: players,
+            deck: updatedDeck,
+          }
+        );
       } else {
         socket.emit("actionError", { msg: "Not enough balance" });
+        const r = await roomModel.findOne({ tableId: room.tableId });
+        io.in(tableId).emit("updateRoom", r);
       }
     } else {
       const r = await roomModel.findOne({ tableId: room.tableId });

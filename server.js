@@ -190,6 +190,7 @@ app.get("/leaveGame/:tableId/:userId", async (req, res) => {
         await roomModel.deleteOne({
           tableId,
         });
+        let copy = { ...io.typingUser };
         if (copy) {
           for (let key in copy) {
             if (copy[key][tableId]) {

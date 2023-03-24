@@ -500,12 +500,13 @@ export const exitRoom = async (io, socket, data) => {
       .lean();
     if (roomdata && roomdata.players.length <= 1) {
       console.log("IF ! 1");
-      const res = await leaveApiCall(roomdata);
+      const res = await leaveApiCall(roomdata, userId);
       console.log({ res });
       if (res) {
         await roomModel.deleteOne({
           tableId,
         });
+        let copy = { ...io.typingUser };
         if (copy) {
           for (let key in copy) {
             if (copy[key][tableId]) {
@@ -581,6 +582,7 @@ export const exitRoom = async (io, socket, data) => {
           await roomModel.deleteOne({
             tableId,
           });
+          let copy = { ...io.typingUser };
           if (copy) {
             for (let key in copy) {
               if (copy[key][tableId]) {
@@ -1287,7 +1289,7 @@ const userTotalWinAmount = (coinsBeforeJoin, hands, userId, roomId, wallet) => {
     });
 
     if (action === "game-lose") {
-      // userBalanceNow -= betAmount;
+      userBalanceNow -= betAmount;
       stats = {
         ...stats,
         loss: stats.loss + 1,
@@ -1303,7 +1305,7 @@ const userTotalWinAmount = (coinsBeforeJoin, hands, userId, roomId, wallet) => {
         totalWinAmount: stats.totalWinAmount + amount ? amount : 0,
       };
       // Because the amount will be increase in the ticket thats why we are decreasing the
-      // userBalanceNow -= betAmount;
+      userBalanceNow -= betAmount;
       totalTicketsWin += amount;
     }
     // console.log("userBalanceNow ==>", userBalanceNow, betAmount);
