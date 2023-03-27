@@ -1500,7 +1500,6 @@ export const leaveApiCall = async (room, userId) => {
     console.log("payload users ===>", payload.users);
 
     payload.users.forEach(async (elUser) => {
-      console.log("elUser ===>", elUser);
       const {
         userBalanceNow,
         transactions,
@@ -1519,7 +1518,12 @@ export const leaveApiCall = async (room, userId) => {
       userWinPromise.push(
         await User.updateOne(
           { _id: convertMongoId(elUser.uid) },
-          { $inc: { wallet: elUser?.wallet, ticket: totalTicketsWin } }
+          {
+            $inc: {
+              wallet: elUser?.wallet ? elUser?.wallet : 0,
+              ticket: totalTicketsWin,
+            },
+          }
         )
       );
       console.log("line 1443");
