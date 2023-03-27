@@ -728,14 +728,15 @@ export const startGame = async (io, data) => {
             //   );
             //   players[i].cards.push(deck.splice(card, 1)[0]);
             // } else {
-            if (item === 2) {
-              const index = deck.findIndex(
-                (el) => players[i].cards[0].value.card === el.value.card
-              );
-              const temp = deck[0];
-              deck[0] = deck[index];
-              deck[index] = temp;
-            }
+
+            // if (item === 2) {
+            //   const index = deck.findIndex(
+            //     (el) => players[i].cards[0].value.card === el.value.card
+            //   );
+            //   const temp = deck[0];
+            //   deck[0] = deck[index];
+            //   deck[index] = temp;
+            // }
             players[i].cards.push(deck[0]);
             deck.shift();
             // }
