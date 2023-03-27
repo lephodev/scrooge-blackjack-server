@@ -728,6 +728,14 @@ export const startGame = async (io, data) => {
             //   );
             //   players[i].cards.push(deck.splice(card, 1)[0]);
             // } else {
+            if (item === 2) {
+              const index = deck.findIndex(
+                (el) => players[i].cards[0].value.card === el.value.card
+              );
+              const temp = deck[0];
+              deck[0] = deck[index];
+              deck[index] = temp;
+            }
             players[i].cards.push(deck[0]);
             deck.shift();
             // }
@@ -1511,7 +1519,7 @@ export const leaveApiCall = async (room, userId) => {
       userWinPromise.push(
         await User.updateOne(
           { _id: convertMongoId(elUser.uid) },
-          { $inc: { wallet: userBalanceNow, ticket: totalTicketsWin } }
+          { $inc: { wallet: elUser.wallet, ticket: totalTicketsWin } }
         )
       );
       console.log("line 1443");
