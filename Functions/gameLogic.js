@@ -800,7 +800,7 @@ export const splitAction = async (io, socket, data) => {
       let deck = room.deck;
       let cards = [];
       let splitSum = [];
-      if (player.wallet >= player.betAmount * 2) {
+      if (player.wallet >= player.betAmount) {
         if (player.isSplitted && player.splitIndex !== null) {
           cards.push([player.cards[player.splitIndex].shift(), deck[0]]);
           deck.shift();
@@ -873,11 +873,11 @@ export const splitAction = async (io, socket, data) => {
         );
       } else {
         socket.emit("actionError", { msg: "Not enough balance" });
-        const r = roomModel.findOne({ tableId });
+        const r = await roomModel.findOne({ tableId });
         io.in(tableId).emit("updateRoom", r);
       }
     } else {
-      const r = roomModel.findOne({ tableId });
+      const r = await roomModel.findOne({ tableId });
       io.in(tableId).emit("updateRoom", r);
     }
   } catch (error) {
@@ -1649,16 +1649,16 @@ const finalCompareGo = async (io, data) => {
                 users[i].wallet + players[i].wallet + player.betAmount,
               currentWallet: users[i].wallet + players[i].wallet, //players[i].wallet,
               previousTickets: players[i].ticket,
-              currentTickets: players[i].ticket + player.betAmount * 2,
+              currentTickets: players[i].ticket + player.betAmount,
             });
 
-            players[i].ticket = player.ticket + player.betAmount * 2;
+            players[i].ticket = player.ticket + player.betAmount;
             // players[i].wallet = player.wallet + player.betAmount * 2;
             winners.push({
               id: player.id,
               name: player.name,
               betAmount: player.betAmount,
-              winAmount: player.betAmount * 2,
+              winAmount: player.betAmount,
               action: "game-win",
             });
           } else if (sum === dealer.sum) {
@@ -1675,7 +1675,7 @@ const finalCompareGo = async (io, data) => {
               previousTickets: players[i].ticket,
               currentTickets: players[i].ticket,
             }); // Because game is draw so it will be not add on in the ticket so Reverting back the winAmount to the user to play
-            players[i].wallet = player.wallet + player.betAmount; // / 2;
+            players[i].wallet = player.wallet + player.betAmount / 2; // / 2;
             draw.push({
               id: player.id,
               name: player.name,
@@ -1695,17 +1695,17 @@ const finalCompareGo = async (io, data) => {
                 users[i].wallet + players[i].wallet + player.betAmount,
               currentWallet: users[i].wallet + players[i].wallet,
               previousTickets: players[i].ticket,
-              currentTickets: players[i].ticket + player.betAmount * 2,
+              currentTickets: players[i].ticket + player.betAmount,
             });
 
-            players[i].ticket = player.ticket + player.betAmount * 2;
+            players[i].ticket = player.ticket + player.betAmount;
 
             // players[i].wallet = player.wallet + player.betAmount * 2;
             winners.push({
               id: player.id,
               name: player.name,
               betAmount: player.betAmount,
-              winAmount: player.betAmount * 2,
+              winAmount: player.betAmount,
               action: "game-win",
             });
           } else if (sum < dealer.sum && dealer.sum <= 21) {
