@@ -1356,6 +1356,7 @@ export const leaveApiCall = async (room, userId) => {
     let users = [];
 
     if (userId) {
+      console.log("entered in if condition");
       const getUser = allUsers.find((el) =>
         el.id
           ? el.id.toString() === userId.toString()
@@ -1383,6 +1384,7 @@ export const leaveApiCall = async (room, userId) => {
       users.push({
         uid,
         hands,
+        wallet: getUser.wallet,
         coinsBeforeJoin: getUser.coinsBeforeStart,
         gameLeaveAt: new Date(),
         gameJoinedAt: getUser.gameJoinedAt,
@@ -1394,7 +1396,7 @@ export const leaveApiCall = async (room, userId) => {
       });
     } else {
       allUsers.forEach((item) => {
-        console.log("handss =>", item.hands);
+        console.log("handss =>", item.wallet);
         let hands = item.hands ? [...item.hands] : [];
         if (room.gamestart) {
           hands.push({
@@ -1495,7 +1497,10 @@ export const leaveApiCall = async (room, userId) => {
     const userWinPromise = [];
     let allTransactions = [];
     let statsPromise = [];
+    console.log("payload users ===>", payload.users);
+
     payload.users.forEach(async (elUser) => {
+      console.log("elUser ===>", elUser);
       const {
         userBalanceNow,
         transactions,
@@ -1509,17 +1514,12 @@ export const leaveApiCall = async (room, userId) => {
         room.tableId,
         elUser.wallet
       );
-      console.log(
-        "userBalanceNow ====>",
-        userBalanceNow,
-        stats,
-        typeof userBalanceNow
-      );
+      console.log("userBalanceNow ====>", elUser.wallet, typeof elUser.wallet);
       allTransactions = [...allTransactions, ...transactions];
       userWinPromise.push(
         await User.updateOne(
           { _id: convertMongoId(elUser.uid) },
-          { $inc: { wallet: elUser.wallet, ticket: totalTicketsWin } }
+          { $inc: { wallet: elUser?.wallet, ticket: totalTicketsWin } }
         )
       );
       console.log("line 1443");
