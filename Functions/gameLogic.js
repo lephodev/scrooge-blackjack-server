@@ -1,5 +1,6 @@
 import { getUpdatedStats } from "../firestore/dbFetch.js";
 import roomModel from "../modals/roomModal.js";
+import userModel from "./../landing-server/models/user.model.js";
 import { findLoserAndWinner, finishHandApiCall, leaveApiCall } from "./game.js";
 import transactionModel from "../modals/transactionModal.js";
 import mongoose from "mongoose";
@@ -105,7 +106,8 @@ export const playerTurnTimer = async (io, data) => {
     );
     console.log("player turn timer", { currentPlayer });
     if (currentPlayerIndex === -1) {
-      dealerTurn(io, data);
+      console.log("dealer has ace ========>", room.dealer.hasAce);
+      await dealerTurn(io, data);
       return;
     }
 
@@ -236,22 +238,35 @@ export const nextPlayerTurn = async (
       players[currentPlayerIndex]
     ) {
       players[currentPlayerIndex].turn = false;
-      players[currentPlayerIndex].action = "stand";
+      if (players[currentPlayerIndex].action !== "insurance") {
+        players[currentPlayerIndex].action = "stand";
+      }
     } else {
       currentPlayerIndex -= 1;
       console.log("player leave =>", currentPlayerIndex);
     }
     if (currentPlayerIndex === room.players.length - 1) {
+      let dealerHasAce = false;
+      if (room.dealer.hasAce) {
+        dealerHasAce = true;
+      }
       setTimeout(async () => {
-        await roomModel.updateOne(
+        const table = await roomModel.findOneAndUpdate(
           { tableId: data.tableId },
           {
             players,
+            askForInsurance: dealerHasAce,
           }
         );
         const upRoom = await roomModel.findOne({ tableId: data.tableId });
         io.in(data.tableId).emit("updateRoom", upRoom);
-        await dealerTurn(io, data);
+        console.log("Dealer turn executes from next player turn");
+        if (room.dealer.hasAce) {
+          // io.in(data.tableId).emit("updateRoom", table);
+          checkInsuranceAsk(io, table);
+        } else {
+          await dealerTurn(io, data);
+        }
       }, 500);
     } else if (
       players[currentPlayerIndex + 1]?.blackjack ||
@@ -276,6 +291,140 @@ export const nextPlayerTurn = async (
       await playerTurnTimer(io, data);
   } catch (error) {
     console.log("Error in nextPlayerTurn =>", error);
+  }
+};
+
+const checkInsuranceAsk = async (io, room) => {
+  try {
+    let players = [...room.players];
+    console.log("player to check ==>", players);
+    let isAnyOneForInsurance = false;
+    for (let el of players) {
+      console.log("el ==>", el);
+      if (
+        el.isPlaying &&
+        !el.isBusted &&
+        !el.blackjack &&
+        !el.isSurrender &&
+        el.wallet >= el.betAmount / 2
+      ) {
+        isAnyOneForInsurance = true;
+        break;
+      }
+    }
+    console.log(
+      "isAnyOneForInsurance ==>",
+      isAnyOneForInsurance,
+      players[0].wallet >= players[0].betAmount / 2
+    );
+    if (!isAnyOneForInsurance) {
+      await dealerTurn(io, { tableId: room._id.toString() });
+    } else {
+      io.in(room._id.toString()).emit("askForInsurance", {
+        players: room.players,
+      });
+      setTimeout(() => {
+        checkEveryOneHasInsuredOrNot(io, { tableId: room._id.toString() });
+      }, 500);
+    }
+  } catch (error) {
+    console.log("error in checkInsuranceAsk", error);
+  }
+};
+
+const checkEveryOneHasInsuredOrNot = async (io, data) => {
+  try {
+    const { tableId } = data;
+    const table = await roomModel.findOne({
+      _id: tableId,
+    });
+    let intervalCount = 0;
+    let playingCount = 0;
+    for (let el of table.players) {
+      console.log("player -->", el.sum, !(el.sum >= 21));
+      if (
+        el.isPlaying &&
+        !el.isBusted &&
+        !el.blackjack &&
+        !el.isSurrender &&
+        el.wallet >= el.betAmount / 2 &&
+        !(el.sum >= 21)
+      ) {
+        playingCount++;
+      }
+    }
+
+    let interval = setInterval(async () => {
+      if (intervalCount > 10) {
+        checkInsurance(io, data);
+        clearInterval(interval);
+        io.in(table._id.toString()).emit("closeInsurancePopUp");
+      } else {
+        const acted = await checkEveryOneActed(io, data, playingCount);
+        if (acted) {
+          clearInterval(interval);
+        }
+        intervalCount++;
+      }
+    }, 1000);
+  } catch (err) {
+    console.log("error in checkEveryOneHasInsuredOrNot", err);
+  }
+};
+
+const checkEveryOneActed = async (io, data, playingCount) => {
+  try {
+    const { tableId } = data;
+    const table = await roomModel.findOne({ _id: tableId });
+    console.log(
+      "playing count ===>",
+      typeof playingCount,
+      typeof table.actedForInsurace
+    );
+    if (playingCount === table.actedForInsurace) {
+      console.log("enterd in playing count");
+      await checkInsurance(io, data);
+      return true;
+    }
+  } catch (error) {
+    console.log("error in checkInsuranceAsk", error);
+  }
+};
+
+const checkInsurance = async (io, data) => {
+  try {
+    const { tableId } = data;
+    const table = await roomModel.findOne({ _id: tableId });
+    let players = [...table.players];
+    let insuredPlayersId = [];
+    let cardForDealer = table.deck[0];
+    let dealerValue = 11;
+    console.log("dealer card value ======>", cardForDealer);
+    if (cardForDealer.value.hasAce) {
+      dealerValue += 1;
+    } else {
+      dealerValue += cardForDealer.value.value;
+    }
+
+    players = players.map((el) => {
+      if (el.isInsured) {
+        insuredPlayersId.push(el.id);
+        el.wallet += dealerValue === 21 ? el.betAmount : 0;
+      }
+    });
+    console.log("dealerValue ====>", dealerValue);
+    if (dealerValue === 21) {
+      io.in(table._id.toString()).emit("insuranceWin", {
+        playerIds: insuredPlayersId,
+      });
+    } else {
+      io.in(table._id.toString()).emit("insuranceLoose", {
+        playerIds: insuredPlayersId,
+      });
+    }
+    await dealerTurn(io, data);
+  } catch (error) {
+    console.log("error in checkInsuranceAsk", error);
   }
 };
 
@@ -513,7 +662,7 @@ export const standAction = async (io, socket, data) => {
 export const doubleAction = async (io, socket, data) => {
   try {
     const { tableId, userId } = data;
-    const room = await roomModel.findOne({
+    let room = await roomModel.findOne({
       $and: [
         { tableId },
         {
@@ -525,11 +674,12 @@ export const doubleAction = async (io, socket, data) => {
         },
       ],
     });
+
     if (room) {
       let deck = room.deck;
       let player = room.players.find((el) => el.turn);
       let currentPlayerIndex = room.players.findIndex((el) => el.turn);
-      if (player.wallet >= player.betAmount * 2) {
+      if (player.wallet >= player.betAmount) {
         if (player.isSplitted) {
           if (player.hasAce && deck[0].value.hasAce) {
             player.splitSum[player.splitIndex][0] =
@@ -595,12 +745,25 @@ export const doubleAction = async (io, socket, data) => {
         );
         const updatedRoom = await roomModel.findOne({ tableId });
         if (player.hasAce) {
-          await outputCardSumAce(io, data, updatedRoom);
+          room = await outputCardSumAce(io, data, updatedRoom);
         } else {
-          await outputCardSum(io, data, updatedRoom);
+          room = await outputCardSum(io, data, updatedRoom);
         }
+        io.in(tableId).emit("updateRoom", room);
+        const { players, deck: updatedDeck } = room;
+        await roomModel.updateOne(
+          {
+            _id: tableId,
+          },
+          {
+            players: players,
+            deck: updatedDeck,
+          }
+        );
       } else {
         socket.emit("actionError", { msg: "Not enough balance" });
+        const r = await roomModel.findOne({ tableId: room.tableId });
+        io.in(tableId).emit("updateRoom", r);
       }
     } else {
       const r = await roomModel.findOne({ tableId: room.tableId });
@@ -637,7 +800,7 @@ export const splitAction = async (io, socket, data) => {
       let deck = room.deck;
       let cards = [];
       let splitSum = [];
-      if (player.wallet >= player.betAmount * 2) {
+      if (player.wallet >= player.betAmount) {
         if (player.isSplitted && player.splitIndex !== null) {
           cards.push([player.cards[player.splitIndex].shift(), deck[0]]);
           deck.shift();
@@ -710,9 +873,11 @@ export const splitAction = async (io, socket, data) => {
         );
       } else {
         socket.emit("actionError", { msg: "Not enough balance" });
+        const r = await roomModel.findOne({ tableId });
+        io.in(tableId).emit("updateRoom", r);
       }
     } else {
-      const r = roomModel.findOne({ tableId });
+      const r = await roomModel.findOne({ tableId });
       io.in(tableId).emit("updateRoom", r);
     }
   } catch (error) {
@@ -753,7 +918,7 @@ export const surrender = async (io, socket, data) => {
             "players.$.turn": false,
             "players.$.action": "surrender",
             $inc: {
-              "players.$.wallet": player.betAmount / 2,
+              "players.$.wallet": Math.ceil(player.betAmount / 2),
             },
           }
         );
@@ -1461,7 +1626,11 @@ const finalCompareGo = async (io, data) => {
               date: new Date(),
               isWatcher: false,
               betAmount: player.betAmount,
+              previousWallet:
+                users[i].wallet + players[i].wallet + player.betAmount,
               currentWallet: users[i].wallet + players[i].wallet,
+              previousTickets: players[i].ticket,
+              currentTickets: players[i].ticket,
             });
           } else if (sum <= 21 && sum > dealer.sum) {
             // Devide betAmount by half because when there split so there is two bet of 10 and 10 so the total bet amount is 20
@@ -1476,16 +1645,20 @@ const finalCompareGo = async (io, data) => {
               action: "game-win",
               date: new Date(),
               betAmount: player.betAmount,
+              previousWallet:
+                users[i].wallet + players[i].wallet + player.betAmount,
               currentWallet: users[i].wallet + players[i].wallet, //players[i].wallet,
+              previousTickets: players[i].ticket,
+              currentTickets: players[i].ticket + player.betAmount,
             });
 
-            players[i].ticket = player.ticket + player.betAmount * 2;
+            players[i].ticket = player.ticket + player.betAmount;
             // players[i].wallet = player.wallet + player.betAmount * 2;
             winners.push({
               id: player.id,
               name: player.name,
               betAmount: player.betAmount,
-              winAmount: player.betAmount * 2,
+              winAmount: player.betAmount,
               action: "game-win",
             });
           } else if (sum === dealer.sum) {
@@ -1495,10 +1668,14 @@ const finalCompareGo = async (io, data) => {
               action: "game-draw",
               date: new Date(),
               betAmount: player.betAmount,
+              previousWallet:
+                users[i].wallet + players[i].wallet + player.betAmount,
               currentWallet:
                 users[i].wallet + players[i].wallet + player.betAmount,
+              previousTickets: players[i].ticket,
+              currentTickets: players[i].ticket,
             }); // Because game is draw so it will be not add on in the ticket so Reverting back the winAmount to the user to play
-            players[i].wallet = player.wallet + player.betAmount; // / 2;
+            players[i].wallet = player.wallet + player.betAmount / 2; // / 2;
             draw.push({
               id: player.id,
               name: player.name,
@@ -1514,17 +1691,21 @@ const finalCompareGo = async (io, data) => {
               action: "game-win",
               date: new Date(),
               betAmount: player.betAmount,
+              previousWallet:
+                users[i].wallet + players[i].wallet + player.betAmount,
               currentWallet: users[i].wallet + players[i].wallet,
+              previousTickets: players[i].ticket,
+              currentTickets: players[i].ticket + player.betAmount,
             });
 
-            players[i].ticket = player.ticket + player.betAmount * 2;
+            players[i].ticket = player.ticket + player.betAmount;
 
             // players[i].wallet = player.wallet + player.betAmount * 2;
             winners.push({
               id: player.id,
               name: player.name,
               betAmount: player.betAmount,
-              winAmount: player.betAmount * 2,
+              winAmount: player.betAmount,
               action: "game-win",
             });
           } else if (sum < dealer.sum && dealer.sum <= 21) {
@@ -1542,7 +1723,11 @@ const finalCompareGo = async (io, data) => {
               action: "game-lose",
               date: new Date(),
               betAmount: player.betAmount,
+              previousWallet:
+                users[i].wallet + players[i].wallet + player.betAmount,
               currentWallet: users[i].wallet + players[i].wallet,
+              previousTickets: players[i].ticket,
+              currentTickets: players[i].ticket,
             });
           }
         });
@@ -1572,7 +1757,11 @@ const finalCompareGo = async (io, data) => {
             action: "game-lose",
             date: new Date(),
             betAmount: player.betAmount,
+            previousWallet:
+              users[i].wallet + players[i].wallet + player.betAmount,
             currentWallet: users[i].wallet + players[i].wallet,
+            previousTickets: players[i].ticket,
+            currentTickets: players[i].ticket,
           });
           console.log("Hands ===== >", players[i].hands);
           return;
@@ -1587,7 +1776,12 @@ const finalCompareGo = async (io, data) => {
             action: "game-win",
             date: new Date(),
             betAmount: player.betAmount,
+            previousWallet:
+              users[i].wallet + players[i].wallet + player.betAmount,
             currentWallet: users[i].wallet + players[i].wallet,
+            previousTickets: players[i].ticket,
+            currentTickets:
+              player.ticket + player.betAmount * 1.5 + player.betAmount,
           });
           players[i].ticket =
             player.ticket + player.betAmount * 1.5 + player.betAmount;
@@ -1614,7 +1808,11 @@ const finalCompareGo = async (io, data) => {
             date: new Date(),
             isWatcher: false,
             betAmount: player.betAmount,
+            previousWallet:
+              users[i].wallet + players[i].wallet + player.betAmount,
             currentWallet: users[i].wallet + players[i].wallet,
+            previousTickets: players[i].ticket,
+            currentTickets: players[i].ticket,
           });
         } else if (sum <= 21 && sum > dealer.sum) {
           // const user = await User.findOne({
@@ -1626,7 +1824,11 @@ const finalCompareGo = async (io, data) => {
             action: "game-win",
             date: new Date(),
             betAmount: player.betAmount,
+            previousWallet:
+              users[i].wallet + players[i].wallet + player.betAmount,
             currentWallet: users[i].wallet + players[i].wallet,
+            previousTickets: players[i].ticket,
+            currentTickets: players[i].ticket + player.betAmount * 2,
           });
           players[i].ticket = player.ticket + player.betAmount * 2;
 
@@ -1645,8 +1847,12 @@ const finalCompareGo = async (io, data) => {
             action: "game-draw",
             date: new Date(),
             betAmount: player.betAmount,
+            previousWallet:
+              users[i].wallet + players[i].wallet + player.betAmount,
             currentWallet:
               users[i].wallet + players[i].wallet + player.betAmount,
+            previousTickets: players[i].ticket,
+            currentTickets: players[i].ticket,
           });
           // In case of draw revert the bet amount
           players[i].wallet = player.wallet + player.betAmount;
@@ -1665,7 +1871,11 @@ const finalCompareGo = async (io, data) => {
             action: "game-win",
             date: new Date(),
             betAmount: player.betAmount,
+            previousWallet:
+              users[i].wallet + players[i].wallet + player.betAmount,
             currentWallet: users[i].wallet + players[i].wallet,
+            previousTickets: players[i].ticket,
+            currentTickets: players[i].ticket + player.betAmount * 2,
           });
           players[i].ticket = player.ticket + player.betAmount * 2;
 
@@ -1692,7 +1902,11 @@ const finalCompareGo = async (io, data) => {
             date: new Date(),
             isWatcher: false,
             betAmount: player.betAmount,
+            previousWallet:
+              users[i].wallet + players[i].wallet + player.betAmount,
             currentWallet: users[i].wallet + players[i].wallet,
+            previousTickets: players[i].ticket,
+            currentTickets: players[i].ticket,
           });
         }
       }
@@ -1850,5 +2064,125 @@ export const hasAce = (cards) => {
   } catch (error) {
     console.log("Error in hasAce check =>", error);
     return false;
+  }
+};
+
+export const insuranceTaken = async (io, socket, data) => {
+  try {
+    console.log("data in insurance", data);
+    const { tableId, userId, wallet } = data;
+
+    let table = await roomModel.findOne({
+      _id: tableId,
+    });
+
+    let dealer = table.dealer;
+    let crrDeck = table.deck;
+
+    dealer?.cards?.push(crrDeck.shift());
+
+    let dealerTotalValue = 0;
+    dealer?.cards.forEach((el, i) => {
+      console.log("el ==>", typeof el.value.value, el);
+      if (typeof el.value.value === "object") {
+        dealerTotalValue += el.value?.value[1];
+      } else {
+        dealerTotalValue += el.value?.value;
+      }
+    });
+
+    console.log("dealerTotalValue ==>", dealerTotalValue);
+
+    let players = [...table.players];
+    players = players.map((el) => {
+      if (el.id.toString() === userId.toString()) {
+        console.log("got pplayer id");
+        if (dealerTotalValue === 21) {
+          el.wallet = el.wallet + el.betAmount;
+          el.isPlaying = false;
+          el.action = "insurance";
+          el.turn = true;
+        } else {
+          console.log("enterd in second condition", el.betAmount);
+          el.wallet = el.wallet - el.betAmount / 2;
+          console.log("new wallet", el.wallet);
+          el.action = "insurance";
+          el.turn = true;
+        }
+      }
+      return el;
+    });
+
+    console.log("new action outside from loop", players[0].action);
+
+    table.dealer = dealer;
+    table.deck = crrDeck;
+    table.players = players;
+
+    io.in(tableId).emit("updateRoom", table);
+
+    await roomModel.updateOne(
+      {
+        _id: tableId,
+      },
+      {
+        dealer: dealer,
+        deck: crrDeck,
+        players: players,
+      }
+    );
+
+    // console.log("table ====>", table);
+  } catch (error) {
+    console.log("Error in insurance functioon", error);
+  }
+};
+
+export const doInsurance = async (io, socket, data) => {
+  try {
+    console.log("doInsurance executed ==>", data);
+    const { tableId, userId } = data;
+    const table = await roomModel.findOne({ _id: tableId });
+    const user = await userModel.findOne({ _id: userId });
+    let players = [...table.players];
+    players = players.map((el) => {
+      if (el.id.toString() === userId.toString()) {
+        el.isInsured = true;
+        el.hands.push({
+          amount: el.betAmount / 2,
+          action: "game-insurance",
+          isWatcher: false,
+          betAmount: el.betAmount / 2,
+          previousWallet: el.wallet + user.wallet + el.betAmount,
+          currentWallet:
+            el.wallet - el.betAmount / 2 + user.wallet + el.betAmount,
+          previousTickets: el.ticket + user.ticket,
+          currentTickets: el.ticket + user.ticket,
+        });
+        el.wallet -= el.betAmount / 2;
+      }
+      return el;
+    });
+    const updatedRoom = await roomModel.findOneAndUpdate(
+      { _id: tableId },
+      { players: players, $inc: { actedForInsurace: 1 } }
+    );
+    io.in(data.tableId).emit("updateRoom", updatedRoom);
+  } catch (error) {
+    console.log("Error in doInsurance", error);
+  }
+};
+
+export const denyInsurance = async (io, socket, data) => {
+  try {
+    console.log("denyInsurance executed ==>", data);
+    const { tableId } = data;
+    const updatedRoom = await roomModel.findOneAndUpdate(
+      { _id: tableId },
+      { $inc: { actedForInsurace: 1 } }
+    );
+    io.in(data.tableId).emit("updateRoom", updatedRoom);
+  } catch (error) {
+    console.log("Error in denyInsurance", error);
   }
 };

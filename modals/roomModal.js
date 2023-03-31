@@ -35,6 +35,8 @@ const roomSchema = new Schema({
     default: Date.now(),
   },
   chats: [],
+  askForInsurance: { type: Boolean, default: false },
+  actedForInsurace: { type: Number, default: 0 },
 });
 
 roomSchema.pre("save", function (next) {

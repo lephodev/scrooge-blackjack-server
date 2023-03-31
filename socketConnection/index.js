@@ -23,6 +23,9 @@ import {
   splitAction,
   standAction,
   surrender,
+  insuranceTaken,
+  denyInsurance,
+  doInsurance,
 } from "../Functions/gameLogic.js";
 import roomModel from "../modals/roomModal.js";
 import { guid } from "./utils.js";
@@ -30,6 +33,7 @@ import { guid } from "./utils.js";
 const socketConnection = (io) => {
   io.users = [];
   io.room = [];
+  io.typingPlayers = {};
   const rooms = [];
   io.on("connection", (socket) => {
     socket.on("checkTable", async (data) => {
@@ -141,6 +145,22 @@ const socketConnection = (io) => {
       await typingonChat(io, socket, data);
     });
 
+    socket.on("insurance", async (data) => {
+      console.log("insurance socket emitted");
+      await insuranceTaken(io, socket, data);
+      io.in(data.tableId).emit("action", {
+        type: "insurance",
+      });
+    });
+
+    socket.on("doInsure", async (data) => {
+      await doInsurance(io, socket, data);
+    });
+
+    socket.on("denyInsurance", async (data) => {
+      await denyInsurance(io, socket, data);
+    });
+
     // disconnect from server
     socket.on("disconnect", () => {
       try {
@@ -208,7 +228,7 @@ const socketConnection = (io) => {
               console.log("exit room called after 300000 milli sec");
               await exitRoom(io, socket, dd);
             }
-          }, 12000);
+          }, 120000);
         } else {
           console.log("FAILED TO COMPLETE DISCONNECT PART");
         }
