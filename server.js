@@ -324,11 +324,18 @@ app.get("/getAllUsers", async (req, res) => {
   // if (!userId) {
   //   return res.status(400).send({ message: 'User id is required.' });
   // }
-
+  console.log("query ===>", req.query);
   try {
+    const { userId } = req.query;
+    // console.log("user ==>", req.user);
     const friendList = await User.find({
-      isRegistrationComplete: true,
+      $and: [{ isRegistrationComplete: true }, { _id: { $nin: [userId] } }],
     });
+
+    // {
+    //   isRegistrationComplete: true,
+    // }
+
     // .populate({
     //   path: 'friends',
     //   select: {
