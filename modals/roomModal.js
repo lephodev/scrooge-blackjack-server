@@ -29,7 +29,7 @@ const roomSchema = new Schema({
   gameCardStats: { type: Array },
   drawPlayers: { type: Array },
   leaveReq: { type: Array },
-  remainingPretimer: { type: Number, default: 5 },
+  remainingPretimer: { type: Number, default: 3 },
   createdAt: {
     type: Date,
     default: Date.now(),
