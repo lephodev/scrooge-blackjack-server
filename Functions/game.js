@@ -98,7 +98,7 @@ export const createNewGame = async (io, socket, data) => {
           isInsured: false,
         },
       ],
-      remainingPretimer: 5,
+      remainingPretimer: 3,
       gamestart: false,
       finish: false,
       hostId: admin,
