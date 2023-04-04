@@ -434,7 +434,7 @@ app.post("/createTable", auth(), async (req, res) => {
           isInsured: false,
         },
       ],
-      remainingPretimer: 5,
+      remainingPretimer: 3,
       gamestart: false,
       finish: false,
       hostId: _id,

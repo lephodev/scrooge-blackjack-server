@@ -2002,7 +2002,7 @@ export const resetGame = async (io, data) => {
       },
       {
         gameCardStats: history,
-        remainingPretimer: 5,
+        remainingPretimer: 3,
         gamestart: false,
         players: players,
         preTimer: false,
