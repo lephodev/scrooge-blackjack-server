@@ -1652,7 +1652,7 @@ export const checkRoom = async (data, socket, io) => {
       }
       if (
         !sitAmount ||
-        sitInAmount < 100 ||
+        sitInAmount < 5 ||
         sitAmount > userData.wallet ||
         !/^\d+$/.test(sitInAmount)
       ) {
