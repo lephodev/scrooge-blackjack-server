@@ -905,7 +905,6 @@ export const surrender = async (io, socket, data) => {
       let player = room.players.find((el) => el.turn);
       console.log("PLayer bet amount ===============>", player.betAmount);
       let currentPlayerIndex = room.players.findIndex((el) => el.turn);
-      const returnAmount = Number((player.betAmount / 2).toFixed(2))
 
       if (currentPlayerIndex !== -1) {
         await roomModel.updateOne(
@@ -920,7 +919,7 @@ export const surrender = async (io, socket, data) => {
             "players.$.turn": false,
             "players.$.action": "surrender",
             $inc: {
-              "players.$.wallet": returnAmount,
+              "players.$.wallet": player.betAmount / 2,
             },
           }
         );
