@@ -354,9 +354,9 @@ export const bet = async (io, socket, data) => {
       return;
     }
 
-    if (parseFloat(betAmount) < 10) {
+    if (parseFloat(betAmount) < 1) {
       socket.emit("actionError", {
-        msg: "Minimum bet amount is 10.",
+        msg: "Minimum bet amount is 1.",
       });
       return;
     }
@@ -668,9 +668,9 @@ export const confirmBet = async (io, socket, data) => {
     );
     console.log("GOT player DATA", player);
     if (player && room) {
-      if (betAmount < 10 || !betAmount) {
+      if (betAmount < 1 || !betAmount) {
         socket.emit("actionError", {
-          msg: "Bet amount should be more then 10",
+          msg: "Bet amount should be equal or more than 1",
         });
         return;
       }
