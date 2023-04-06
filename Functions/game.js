@@ -668,9 +668,9 @@ export const confirmBet = async (io, socket, data) => {
     );
     console.log("GOT player DATA", player);
     if (player && room) {
-      if (betAmount < 10 || !betAmount) {
+      if (betAmount < 1 || !betAmount) {
         socket.emit("actionError", {
-          msg: "Bet amount should be more then 10",
+          msg: "Bet amount should be equal or more than 1",
         });
         return;
       }
@@ -1652,7 +1652,7 @@ export const checkRoom = async (data, socket, io) => {
       }
       if (
         !sitAmount ||
-        sitInAmount < 100 ||
+        sitInAmount < 5 ||
         sitAmount > userData.wallet ||
         !/^\d+$/.test(sitInAmount)
       ) {

@@ -363,14 +363,14 @@ app.post("/createTable", auth(), async (req, res) => {
     const { username, wallet, email, _id, avatar } = req.user;
     let valid = true;
     let err = {};
-    const mimimumBet = 10;
+    const mimimumBet = 5;
     if (!gameName) {
       err.gameName = "Game name is required.";
       valid = false;
     }
 
     if (parseFloat(sitInAmount) < mimimumBet) {
-      err.sitInAmount = "Minimum sitting amount is 100.";
+      err.sitInAmount = "Minimum sitting amount is 5.";
       valid = false;
     }
 
