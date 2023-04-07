@@ -315,7 +315,7 @@ app.get("/getUserForInvite/:tableId", async (req, res) => {
 });
 
 app.get("/getRunningGame", async (req, res) => {
-  const blackjackRooms = await roomModel.find({ public: true, finish: false });
+  const blackjackRooms = await roomModel.find({finish: false });
   res.status(200).send({ rooms: blackjackRooms });
 });
 
