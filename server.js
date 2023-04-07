@@ -304,7 +304,7 @@ app.get("/getUserForInvite/:tableId", async (req, res) => {
     const allId = [...leaveReq, ...invPlayers, ...players.map((el) => el.id)];
 
     const allUsers = await User.find({
-      _id: { $nin: allId },
+      //  _id: { $nin: allId },
       isRegistrationComplete: true,
     }).select({ id: 1, username: 1 });
 
