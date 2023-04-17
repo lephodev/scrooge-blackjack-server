@@ -234,9 +234,22 @@ export const joinGame = async (io, socket, data) => {
       socket.emit("joined");
       let lastSocketData = io.room;
       lastSocketData.push({ room: tableId, pretimer: false });
+      const userData = await User.findOne({ _id: convertMongoId(userid) });
+      let updationObject = {};
+      if (userData?.gameMode !== "goldCoin") {
+        updationObject = {
+          wallet: userData?.wallet - amount,
+        };
+      } else {
+        updationObject = {
+          goldCoin: userData?.goldCoin - amount,
+        };
+      }
+      console.log("updationObject =====>", updationObject);
       await User.updateOne(
         { _id: convertMongoId(userid) },
-        { wallet: originalWalletBalance - amount }
+        // { wallet: originalWalletBalance - amount }
+        updationObject
       );
       io.room = [...new Set(lastSocketData.map((ele) => ele.room))].map(
         (el) => {
@@ -1279,6 +1292,8 @@ const userTotalWinAmount = (coinsBeforeJoin, hands, userId, roomId, wallet) => {
       previousWallet,
       previousTickets,
       currentTickets,
+      prevGoldCoin,
+      updatedGoldCoin,
     } = elHand;
 
     transactions.push({
@@ -1294,6 +1309,8 @@ const userTotalWinAmount = (coinsBeforeJoin, hands, userId, roomId, wallet) => {
       prevWallet: previousWallet,
       prevTicket: previousTickets,
       updatedTicket: currentTickets,
+      prevGoldCoin,
+      updatedGoldCoin,
       status: action,
     });
 
@@ -1382,6 +1399,7 @@ export const leaveApiCall = async (room, userId) => {
             : false,
         });
       }
+      const user = await User.findOne({ _id: uid });
       users.push({
         uid,
         hands,
@@ -1389,6 +1407,7 @@ export const leaveApiCall = async (room, userId) => {
         coinsBeforeJoin: getUser.coinsBeforeStart,
         gameLeaveAt: new Date(),
         gameJoinedAt: getUser.gameJoinedAt,
+        gameMode: user?.gameMode,
         isWatcher: room.watchers.find(
           (ele) => ele.userid.toString() === uid.toString()
         )
@@ -1396,7 +1415,11 @@ export const leaveApiCall = async (room, userId) => {
           : false,
       });
     } else {
-      allUsers.forEach((item) => {
+      // allUsers.forEach((item) => {
+
+      // });
+      console.log("allUsers ===>", allUsers);
+      for await (let item of allUsers) {
         console.log("handss =>", item.wallet);
         let hands = item.hands ? [...item.hands] : [];
         if (room.gamestart) {
@@ -1410,6 +1433,8 @@ export const leaveApiCall = async (room, userId) => {
           });
         }
         let uid = item.id ? item.id : item.userid;
+        const user = await User.findOne({ _id: uid });
+        console.log("user in loop", user);
         users.push({
           uid,
           hands,
@@ -1420,11 +1445,12 @@ export const leaveApiCall = async (room, userId) => {
           coinsBeforeJoin: item.coinsBeforeStart,
           gameLeaveAt: new Date(),
           gameJoinedAt: item.gameJoinedAt,
+          gameMode: user?.gameMode,
           isWatcher: room.watchers.find((ele) => ele.userid === uid)
             ? true
             : false,
         });
-      });
+      }
     }
 
     let payload = {
@@ -1514,19 +1540,36 @@ export const leaveApiCall = async (room, userId) => {
         room.tableId,
         elUser.wallet
       );
-      console.log("userBalanceNow ====>", elUser.wallet, typeof elUser.wallet);
-      allTransactions = [...allTransactions, ...transactions];
-      userWinPromise.push(
-        await User.updateOne(
-          { _id: convertMongoId(elUser.uid) },
-          {
-            $inc: {
-              wallet: elUser?.wallet ? elUser?.wallet : 0,
-              ticket: totalTicketsWin,
-            },
-          }
-        )
+      console.log(
+        "userBalanceNow ====>",
+        userBalanceNow,
+        elUser.wallet,
+        typeof elUser.wallet
       );
+      console.log("elUser ====>", elUser.gameMode);
+      allTransactions = [...allTransactions, ...transactions];
+      let updationObject = {};
+      if (elUser.gameMode !== "goldCoin") {
+        updationObject = {
+          wallet: elUser?.wallet ? elUser?.wallet : 0,
+          ticket: totalTicketsWin,
+        };
+      } else {
+        updationObject = {
+          goldCoin: elUser?.wallet ? elUser?.wallet : 0,
+          ticket: totalTicketsWin,
+        };
+      }
+      console.log("updationObject =====>", updationObject);
+      if (elUser)
+        userWinPromise.push(
+          await User.updateOne(
+            { _id: convertMongoId(elUser.uid) },
+            {
+              $inc: updationObject,
+            }
+          )
+        );
       console.log("line 1443");
       if (shouldUpdateStats) {
         statsPromise.push(

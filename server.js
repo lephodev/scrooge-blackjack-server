@@ -316,7 +316,7 @@ app.get("/getUserForInvite/:tableId", async (req, res) => {
 });
 
 app.get("/getRunningGame", async (req, res) => {
-  const blackjackRooms = await roomModel.find({finish: false });
+  const blackjackRooms = await roomModel.find({ finish: false });
   res.status(200).send({ rooms: blackjackRooms });
 });
 
@@ -361,7 +361,8 @@ app.get("/getAllUsers", async (req, res) => {
 app.post("/createTable", auth(), async (req, res) => {
   try {
     const { gameName, public: isPublic, invitedUsers, sitInAmount } = req.body;
-    const { username, wallet, gameMode,goldCoin, email, _id, avatar } = req.user;
+    const { username, wallet, gameMode, goldCoin, email, _id, avatar } =
+      req.user;
     let valid = true;
     let err = {};
     const mimimumBet = 1;
@@ -374,9 +375,9 @@ app.post("/createTable", auth(), async (req, res) => {
       err.sitInAmount = "Minimum sitting amount is 5.";
       valid = false;
     }
-let newWallet=gameMode==="goldCoin"?goldCoin:wallet
-console.log("current",newWallet);
-    if (parseFloat(sitInAmount) >newWallet ) {
+    let newWallet = gameMode === "goldCoin" ? goldCoin : wallet;
+    console.log("current", newWallet);
+    if (parseFloat(sitInAmount) > newWallet) {
       err.sitInAmount = "Sit in amount cant be more then user wallet amount.";
       valid = false;
     }
@@ -435,6 +436,7 @@ console.log("current",newWallet);
           isActed: false,
           action: "",
           isInsured: false,
+          // gameMode:
         },
       ],
       remainingPretimer: 3,
@@ -461,12 +463,11 @@ console.log("current",newWallet);
 
     console.log(JSON.stringify(newRoom.players));
     console.log("Usser --> ", req.user);
-     if(gameMode==="token"){
-    await User.updateOne({ _id }, { wallet: wallet - sitInAmount });
-}
-else if(gameMode==="goldCoin"){
-  await User.updateOne({ _id }, { goldCoin: goldCoin - sitInAmount });
-}
+    if (gameMode === "token") {
+      await User.updateOne({ _id }, { wallet: wallet - sitInAmount });
+    } else if (gameMode === "goldCoin") {
+      await User.updateOne({ _id }, { goldCoin: goldCoin - sitInAmount });
+    }
     if (Array.isArray(invitetedPlayerUserId) && invitetedPlayerUserId.length) {
       const sendMessageToInvitedUsers = [
         ...invitetedPlayerUserId.map((el) => {
@@ -589,21 +590,18 @@ app.post("/changeGameMode", auth(), async (req, res) => {
   try {
     const user = req.user;
     let { gameMode } = req.body;
-  //  console.log("gameMode",gameMode);
+    //  console.log("gameMode",gameMode);
     await User.updateOne(
       { _id: convertMongoId(user.id) },
-     { gameMode:gameMode  } 
+      { gameMode: gameMode }
     );
-    let getUpdatedData=await User.findOne(
-      { _id: convertMongoId(user.id) },
-    );
-    res.status(200).send({ code:200,msg: "Success" ,user:getUpdatedData});
+    let getUpdatedData = await User.findOne({ _id: convertMongoId(user.id) });
+    res.status(200).send({ code: 200, msg: "Success", user: getUpdatedData });
   } catch (error) {
     res.status(500).send({ msg: "Internel server error" });
     console.log(error);
   }
 });
-
 
 server.listen(process.env.PORT, () =>
   console.log(`Listening on ${process.env.PORT}`)
