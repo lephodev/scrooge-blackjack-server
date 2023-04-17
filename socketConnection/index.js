@@ -164,12 +164,12 @@ const socketConnection = (io) => {
     // disconnect from server
     socket.on("disconnect", () => {
       try {
-        console.log(
-          "disconnected",
-          socket.id,
-          socket.customId,
-          socket.customRoom
-        );
+        // console.log(
+        //   "disconnected",
+        //   socket.id,
+        //   socket.customId,
+        //   socket.customRoom
+        // );
 
         if (!socket.customId || !socket.customRoom) {
           return;
