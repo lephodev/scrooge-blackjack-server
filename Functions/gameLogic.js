@@ -1370,20 +1370,35 @@ const playerAceDeckAce = async (data, room) => {
         ]; // add sum
       } else if (player.hasAce && !deck[0].value.hasAce) {
         player.splitSum[player.splitIndex][0] =
-          player.splitSum[player.splitIndex][0] + deck[0].value.value; // add sum
+          parseInt(
+            player.splitSum[player.splitIndex][0]
+              ? player.splitSum[player.splitIndex][0]
+              : 0
+          ) + parseInt(deck[0].value.value ? deck[0].value.value : 0); // add sum
         player.splitSum[player.splitIndex][1] =
-          player.splitSum[player.splitIndex][1] + deck[0].value.value; // add sum
+          parseInt(
+            player.splitSum[player.splitIndex][1]
+              ? player.splitSum[player.splitIndex][1]
+              : 0
+          ) + parseInt(deck[0].value.value ? deck[0].value.value : 0); // add sum
       }
       player.cards[player.splitIndex].push(deck[0]);
     } else {
       if (player.hasAce && deck[0].value.hasAce) {
-        player.sum[0] = player.sum[0] + 1; // add sum
-        player.sum[1] = player.sum[1] + 1; // add sum
+        player.sum[0] = parseInt(player.sum[0] ? player.sum[0] : 0) + 1; // add sum
+        player.sum[1] = parseInt(player.sum[1] ? player.sum[1] : 0) + 1; // add sum
       } else if (!player.hasAce && deck[0].value.hasAce) {
-        player.sum = [player.sum + 1, player.sum + 11]; // add sum
+        player.sum = [
+          parseInt(player.sum ? player.sum : 0) + 1,
+          parseInt(player.sum ? player.sum : 0) + 11,
+        ]; // add sum
       } else if (player.hasAce && !deck[0].value.hasAce) {
-        player.sum[0] = player.sum[0] + deck[0].value.value; // add sum
-        player.sum[1] = player.sum[1] + deck[0].value.value; // add sum
+        player.sum[0] =
+          parseInt(player.sum[0] ? player.sum[0] : 0) +
+          player.sum[0](deck[0].value.value ? deck[0].value.value : 0); // add sum
+        player.sum[1] =
+          parseInt(player.sum[1] ? player.sum[1] : 0) +
+          parseInt(deck[0].value.value ? deck[0].value.value : 0); // add sum
       }
       player.cards.push(deck[0]);
     }
