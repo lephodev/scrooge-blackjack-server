@@ -16,6 +16,7 @@ import passport from "passport";
 import Token from "./landing-server/models/Token.model.js";
 import Message from "./modals/messageModal.js";
 import Notification from "./modals/NotificationModal.js";
+import { log } from "console";
 
 const convertMongoId = (id) => mongoose.Types.ObjectId(id);
 
@@ -360,7 +361,7 @@ app.get("/getAllUsers", async (req, res) => {
 app.post("/createTable", auth(), async (req, res) => {
   try {
     const { gameName, public: isPublic, invitedUsers, sitInAmount } = req.body;
-    const { username, wallet, email, _id, avatar } = req.user;
+    const { username, wallet, gameMode,goldCoin, email, _id, avatar } = req.user;
     let valid = true;
     let err = {};
     const mimimumBet = 1;
@@ -373,18 +374,20 @@ app.post("/createTable", auth(), async (req, res) => {
       err.sitInAmount = "Minimum sitting amount is 5.";
       valid = false;
     }
-
-    if (parseFloat(sitInAmount) > wallet) {
+let newWallet=gameMode==="goldCoin"?goldCoin:wallet
+console.log("current",newWallet);
+    if (parseFloat(sitInAmount) >newWallet ) {
       err.sitInAmount = "Sit in amount cant be more then user wallet amount.";
       valid = false;
     }
 
-    if (!wallet) {
+    if (!newWallet) {
       err.gameName = "You don't have enough balance in your wallet.";
       valid = false;
     }
 
     if (!valid) {
+      // console.log({err},"gameMode",gameMode);
       return res.status(403).send({ ...err, message: "Invalid data" });
     }
 
@@ -458,8 +461,12 @@ app.post("/createTable", auth(), async (req, res) => {
 
     console.log(JSON.stringify(newRoom.players));
     console.log("Usser --> ", req.user);
+     if(gameMode==="token"){
     await User.updateOne({ _id }, { wallet: wallet - sitInAmount });
-
+}
+else if(gameMode==="goldCoin"){
+  await User.updateOne({ _id }, { goldCoin: goldCoin - sitInAmount });
+}
     if (Array.isArray(invitetedPlayerUserId) && invitetedPlayerUserId.length) {
       const sendMessageToInvitedUsers = [
         ...invitetedPlayerUserId.map((el) => {
@@ -563,7 +570,7 @@ app.post("/refillWallet", auth(), async (req, res) => {
   }
 });
 
-app.get("/getTablePlayers/:tableId", async (req, res) => {
+app.get("/getTablePlayers", async (req, res) => {
   try {
     const roomData = await roomModel.findOne({ tableId: req.params.tableId });
 
@@ -577,6 +584,26 @@ app.get("/getTablePlayers/:tableId", async (req, res) => {
     res.status(500).send({ message: "Internal server error" });
   }
 });
+
+app.post("/changeGameMode", auth(), async (req, res) => {
+  try {
+    const user = req.user;
+    let { gameMode } = req.body;
+  //  console.log("gameMode",gameMode);
+    await User.updateOne(
+      { _id: convertMongoId(user.id) },
+     { gameMode:gameMode  } 
+    );
+    let getUpdatedData=await User.findOne(
+      { _id: convertMongoId(user.id) },
+    );
+    res.status(200).send({ code:200,msg: "Success" ,user:getUpdatedData});
+  } catch (error) {
+    res.status(500).send({ msg: "Internel server error" });
+    console.log(error);
+  }
+});
+
 
 server.listen(process.env.PORT, () =>
   console.log(`Listening on ${process.env.PORT}`)

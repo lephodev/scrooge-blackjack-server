@@ -96,6 +96,14 @@ const userSchema = mongoose.Schema(
       type: String,
       default: false,
     },
+    gameMode: {
+      type: String,
+      default: "token",
+    },
+    goldCoin: {
+      type: Number,
+      default: 0,
+    },
     isBlock: {
       type: Boolean,
       default: false,
