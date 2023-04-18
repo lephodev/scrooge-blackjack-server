@@ -16,7 +16,17 @@ const transactionSchema = new Schema(
     updatedGoldCoin: { type: Number, default: 0 },
     transactionDetails: {},
     tournamentId: { type: String },
-    transactionType: { type: String, enum: ["poker", "blackjack", "slot"] },
+    transactionType: {
+      type: String,
+      enum: [
+        "poker",
+        "blackjack",
+        "slot",
+        "poker tournament",
+        "referal",
+        "updated by admin",
+      ],
+    },
     status: { type: String },
   },
   { timestamps: true }
