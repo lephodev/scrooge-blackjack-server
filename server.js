@@ -435,8 +435,7 @@ app.post("/createTable", auth(), async (req, res) => {
           isSurrender: false,
           isActed: false,
           action: "",
-          isInsured: false,
-          // gameMode:
+          isInsured: false
         },
       ],
       remainingPretimer: 3,
@@ -450,6 +449,7 @@ app.post("/createTable", auth(), async (req, res) => {
       timer: rTimeout,
       gameType: "Blackjack_Tables",
       gameName: gameName,
+      gameMode:gameMode,
       meetingToken: "",
       meetingId: "",
       dealer: {

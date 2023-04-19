@@ -16,6 +16,11 @@ const roomSchema = new Schema({
   finish: { type: Boolean, default: false },
   tableId: { type: String },
   gameType: { type: String },
+  gameMode:{
+    type: String,
+    enum: [ "token", "goldCoin"],
+    index:true
+  },
   invPlayers: [],
   watchers: [],
   public: { type: Boolean, default: false },
