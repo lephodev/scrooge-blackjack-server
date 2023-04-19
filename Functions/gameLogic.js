@@ -1395,7 +1395,7 @@ const playerAceDeckAce = async (data, room) => {
       } else if (player.hasAce && !deck[0].value.hasAce) {
         player.sum[0] =
           parseInt(player.sum[0] ? player.sum[0] : 0) +
-          player.sum[0](deck[0].value.value ? deck[0].value.value : 0); // add sum
+          parseInt(deck[0].value.value ? deck[0].value.value : 0); // add sum
         player.sum[1] =
           parseInt(player.sum[1] ? player.sum[1] : 0) +
           parseInt(deck[0].value.value ? deck[0].value.value : 0); // add sum
@@ -1701,6 +1701,11 @@ const finalCompareGo = async (io, data) => {
               room?.gameMode !== "goldCoin"
                 ? player.ticket + player.betAmount
                 : player.ticket;
+
+            players[i].wallet =
+              room?.gameMode !== "goldCoin"
+                ? players[i].wallet
+                : players[i].wallet + player.betAmount;
             // players[i].wallet = player.wallet + player.betAmount * 2;
             winners.push({
               id: player.id,
@@ -1778,6 +1783,11 @@ const finalCompareGo = async (io, data) => {
               room?.gameMode !== "goldCoin"
                 ? player.ticket + player.betAmount
                 : player.ticket;
+
+            players[i].wallet =
+              room?.gameMode !== "goldCoin"
+                ? players[i].wallet
+                : players[i].wallet + player.betAmount;
 
             // players[i].wallet = player.wallet + player.betAmount * 2;
             winners.push({
@@ -1911,6 +1921,11 @@ const finalCompareGo = async (io, data) => {
               ? player.ticket + player.betAmount * 1.5 + player.betAmount
               : player.ticket;
 
+          players[i].wallet =
+            room?.gameMode !== "goldCoin"
+              ? players[i].wallet
+              : players[i].wallet + player.betAmount * 1.5 + player.betAmount;
+
           winners.push({
             id: player.id,
             betAmount: player.betAmount,
@@ -1989,6 +2004,10 @@ const finalCompareGo = async (io, data) => {
               ? player.ticket + player.betAmount * 2
               : player.ticket;
 
+          players[i].wallet =
+            room?.gameMode !== "goldCoin"
+              ? players[i].wallet
+              : players[i].wallet + player.betAmount * 2;
           // players[i].wallet = player.wallet + player.betAmount * 2;
           winners.push({
             id: player.id,
@@ -2060,13 +2079,16 @@ const finalCompareGo = async (io, data) => {
             updatedGoldCoin:
               room?.gameMode !== "goldCoin"
                 ? users[i].goldCoin
-                : users[i].goldCoin + players[i].wallet + +player.betAmount * 2,
+                : users[i].goldCoin + players[i].wallet + player.betAmount * 2,
           });
           players[i].ticket =
             room?.gameMode !== "goldCoin"
               ? player.ticket + player.betAmount * 2
               : player.ticket;
-
+          players[i].wallet =
+            room?.gameMode !== "goldCoin"
+              ? players[i].wallet
+              : players[i].wallet + player.betAmount * 2;
           // players[i].wallet = player.wallet + player.betAmount * 2;
           winners.push({
             id: player.id,

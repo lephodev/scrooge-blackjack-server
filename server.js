@@ -360,9 +360,14 @@ app.get("/getAllUsers", async (req, res) => {
 
 app.post("/createTable", auth(), async (req, res) => {
   try {
-    const { gameName, public: isPublic, invitedUsers, sitInAmount } = req.body;
-    const { username, wallet, gameMode, goldCoin, email, _id, avatar } =
-      req.user;
+    const {
+      gameName,
+      public: isPublic,
+      gameMode,
+      invitedUsers,
+      sitInAmount,
+    } = req.body;
+    const { username, wallet, goldCoin, email, _id, avatar } = req.user;
     let valid = true;
     let err = {};
     const mimimumBet = 1;
