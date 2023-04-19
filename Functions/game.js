@@ -1556,8 +1556,8 @@ export const leaveApiCall = async (room, userId) => {
         };
       } else {
         updationObject = {
-          goldCoin: elUser?.wallet ? elUser?.wallet : 0,
-          ticket: totalTicketsWin,
+          goldCoin: elUser?.wallet ? elUser?.wallet + totalTicketsWin : 0,
+          // ticket: totalTicketsWin,
         };
       }
       console.log("updationObject =====>", updationObject);
