@@ -1549,15 +1549,15 @@ export const leaveApiCall = async (room, userId) => {
       console.log("elUser ====>", elUser.gameMode);
       allTransactions = [...allTransactions, ...transactions];
       let updationObject = {};
-      if (elUser.gameMode !== "goldCoin") {
+      if (room?.gameMode !== "goldCoin") {
         updationObject = {
           wallet: elUser?.wallet ? elUser?.wallet : 0,
           ticket: totalTicketsWin,
         };
       } else {
         updationObject = {
-          goldCoin: elUser?.wallet ? elUser?.wallet : 0,
-          ticket: totalTicketsWin,
+          goldCoin: elUser?.wallet ? elUser?.wallet + totalTicketsWin : 0,
+          // ticket: totalTicketsWin,
         };
       }
       console.log("updationObject =====>", updationObject);
@@ -1643,6 +1643,18 @@ export const checkRoom = async (data, socket, io) => {
 
     const roomData = await roomModel.findOne({ tableId });
     const sitAmount = typeof sitInAmount === "number" ? sitInAmount : 0;
+    console.log(
+      "checkingggg ===>",
+      roomData?.gameMode,
+      userData?.goldCoin,
+      sitAmount
+    );
+    if (roomData?.gameMode === "goldCoin" && userData?.goldCoin < sitAmount) {
+      return socket.emit("notEnoughtGoldCoin", {
+        message: "You don't have enough gold coins.",
+      });
+    }
+
     const payload = {
       user: {
         nickname: userData.username,
