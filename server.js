@@ -532,6 +532,17 @@ app.post("/refillWallet", auth(), async (req, res) => {
 
     amount = parseInt(amount);
 
+    const room = await roomModel.findOne({
+      _id: tableId,
+    });
+
+    if (
+      room?.gameMode.toString().toLowerCase() === "goldcoin" &&
+      user?.goldCoin < amount
+    ) {
+      return res.status(403).send({ msg: "You don't have enough gold coin" });
+    }
+
     if (amount > user.wallet) {
       return res
         .status(403)
@@ -564,10 +575,15 @@ app.post("/refillWallet", auth(), async (req, res) => {
       io.in(tableId).emit("updateRoom", roomData);
     }
 
-    await User.updateOne(
-      { _id: convertMongoId(user.id) },
-      { $inc: { wallet: -amount } }
-    );
+    let refillObj = {};
+
+    if (room?.gameMode.toString().toLowerCase() !== "goldcoin") {
+      refillObj = { wallet: -amount };
+    } else {
+      refillObj = { goldCoin: -amount };
+    }
+
+    await User.updateOne({ _id: convertMongoId(user.id) }, { $inc: refillObj });
 
     res.status(200).send({ msg: "Success" });
   } catch (error) {
