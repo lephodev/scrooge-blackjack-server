@@ -236,7 +236,7 @@ export const joinGame = async (io, socket, data) => {
       lastSocketData.push({ room: tableId, pretimer: false });
       const userData = await User.findOne({ _id: convertMongoId(userid) });
       let updationObject = {};
-      if (userData?.gameMode !== "goldCoin") {
+      if (room?.gameMode !== "goldCoin") {
         updationObject = {
           wallet: userData?.wallet - amount,
         };

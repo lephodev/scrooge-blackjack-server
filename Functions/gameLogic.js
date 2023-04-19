@@ -1643,21 +1643,21 @@ const finalCompareGo = async (io, data) => {
               isWatcher: false,
               betAmount: player.betAmount,
               previousWallet:
-                users[i]?.gameMode !== "goldCoin"
+              room?.gameMode !== "goldCoin"
                   ? users[i].wallet + players[i].wallet + player.betAmount
                   : users[i].wallet,
               currentWallet:
-                users[i]?.gameMode !== "goldCoin"
+              room?.gameMode !== "goldCoin"
                   ? users[i].wallet + players[i].wallet
                   : players[i].wallet,
               previousTickets: players[i].ticket,
               currentTickets: players[i].ticket,
               prevGoldCoin:
-                users[i]?.gameMode !== "goldCoin"
+              room?.gameMode !== "goldCoin"
                   ? users[i].goldCoin
                   : users[i].goldCoin + players[i].wallet + player.betAmount,
               updatedGoldCoin:
-                users[i]?.gameMode !== "goldCoin"
+              room?.gameMode !== "goldCoin"
                   ? users[i].goldCoin
                   : users[i].goldCoin + players[i].wallet,
             });
@@ -1683,9 +1683,9 @@ const finalCompareGo = async (io, data) => {
                   ? users[i].wallet + players[i].wallet
                   : users[i].wallet, //players[i].wallet,
               previousTickets: players[i].ticket,
-              currentTickets: players[i].ticket + player.betAmount,
+              currentTickets:room?.gameMode !== "goldCoin"? players[i].ticket + player.betAmount : players[i].ticket,
               prevGoldCoin:
-                users[i]?.gameMode !== "goldCoin"
+              room?.gameMode !== "goldCoin"
                   ? users[i].goldCoin
                   : users[i].goldCoin + players[i].wallet + player.betAmount,
               updatedGoldCoin:
@@ -1711,11 +1711,11 @@ const finalCompareGo = async (io, data) => {
               date: new Date(),
               betAmount: player.betAmount,
               previousWallet:
-                users[i]?.gameMode !== "goldCoin"
+              room?.gameMode !== "goldCoin"
                   ? users[i].wallet + players[i].wallet + player.betAmount
                   : users[i].wallet,
               currentWallet:
-                users[i]?.gameMode !== "goldCoin"
+              room?.gameMode !== "goldCoin"
                   ? users[i].wallet + players[i].wallet + player.betAmount
                   : users[i].wallet,
               previousTickets: players[i].ticket,
