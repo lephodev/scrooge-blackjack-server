@@ -334,6 +334,7 @@ const checkInsuranceAsk = async (io, room) => {
 
 const checkEveryOneHasInsuredOrNot = async (io, data) => {
   try {
+    console.log("checkEveryOneHasInsuredOrNot executed");
     const { tableId } = data;
     const table = await roomModel.findOne({
       _id: tableId,
@@ -355,6 +356,7 @@ const checkEveryOneHasInsuredOrNot = async (io, data) => {
     }
 
     let interval = setInterval(async () => {
+      console.log("intervval ==>", intervalCount);
       if (intervalCount > 10) {
         await checkInsurance(io, data);
         clearInterval(interval);
@@ -374,6 +376,7 @@ const checkEveryOneHasInsuredOrNot = async (io, data) => {
 
 const checkEveryOneActed = async (io, data, playingCount) => {
   try {
+    console.log("checkEveryOneHasInsuredOrNot executed");
     const { tableId } = data;
     const table = await roomModel.findOne({ _id: tableId });
     console.log(
@@ -393,6 +396,7 @@ const checkEveryOneActed = async (io, data, playingCount) => {
 
 const checkInsurance = async (io, data) => {
   try {
+    console.log("check insurance executed ==>");
     const { tableId } = data;
     const table = await roomModel.findOne({ _id: tableId });
     let players = [...table.players];
@@ -421,6 +425,7 @@ const checkInsurance = async (io, data) => {
       return el;
     });
 
+    await roomModel.updateOne({ _id: tableId }, { players: players });
     console.log("dealerValue ====>", dealerValue);
     if (dealerValue === 21) {
       io.in(table._id.toString()).emit("insuranceWin", {
@@ -431,8 +436,6 @@ const checkInsurance = async (io, data) => {
         playerIds: insuredPlayersId,
       });
     }
-
-    await roomModel.updateOne({ _id: tableId }, { players: players });
 
     await dealerTurn(io, data);
   } catch (error) {
