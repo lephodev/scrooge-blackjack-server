@@ -750,6 +750,7 @@ export const startGame = async (io, data) => {
             //   deck[0] = deck[index];
             //   deck[index] = temp;
             // }
+
             let index;
             let temp;
 
