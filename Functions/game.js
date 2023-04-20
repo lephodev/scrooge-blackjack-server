@@ -755,10 +755,10 @@ export const startGame = async (io, data) => {
             let temp;
 
             // if (item === 1) {
-            index = deck.findIndex((el) => el.value.card === "A");
-            temp = deck[0];
-            deck[0] = deck[index];
-            deck[index] = temp;
+            // index = deck.findIndex((el) => el.value.card === "A");
+            // temp = deck[0];
+            // deck[0] = deck[index];
+            // deck[index] = temp;
             // }
 
             players[i].cards.push(deck[0]);
