@@ -742,14 +742,14 @@ export const startGame = async (io, data) => {
             //   players[i].cards.push(deck.splice(card, 1)[0]);
             // } else {
 
-            // if (item === 2) {
-            //   const index = deck.findIndex(
-            //     (el) => players[i].cards[0].value.card === el.value.card
-            //   );
-            //   const temp = deck[0];
-            //   deck[0] = deck[index];
-            //   deck[index] = temp;
-            // }
+            if (item === 2) {
+              const index = deck.findIndex(
+                (el) => players[i].cards[0].value.card === el.value.card
+              );
+              const temp = deck[0];
+              deck[0] = deck[index];
+              deck[index] = temp;
+            }
             players[i].cards.push(deck[0]);
             deck.shift();
             // }
@@ -763,9 +763,11 @@ export const startGame = async (io, data) => {
         });
         if (item === 1) {
           // const index = deck.findIndex((el) => el.value.card === "A");
+
           // let temp = deck[0];
           // deck[0] = deck[index];
           // deck[index] = temp;
+
           dealer.cards.push(deck[0]);
           deck.shift();
           dealer.sum = dealer.cards[0].value.value;
@@ -1556,7 +1558,7 @@ export const leaveApiCall = async (room, userId) => {
         };
       } else {
         updationObject = {
-          goldCoin: elUser?.wallet ? elUser?.wallet + totalTicketsWin : 0,
+          goldCoin: elUser?.wallet ? elUser?.wallet : 0,
           // ticket: totalTicketsWin,
         };
       }

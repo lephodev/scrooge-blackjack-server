@@ -356,7 +356,7 @@ const checkEveryOneHasInsuredOrNot = async (io, data) => {
 
     let interval = setInterval(async () => {
       if (intervalCount > 10) {
-        checkInsurance(io, data);
+        await checkInsurance(io, data);
         clearInterval(interval);
         io.in(table._id.toString()).emit("closeInsurancePopUp");
       } else {
@@ -397,9 +397,16 @@ const checkInsurance = async (io, data) => {
     const table = await roomModel.findOne({ _id: tableId });
     let players = [...table.players];
     let insuredPlayersId = [];
+
+    // let indx = table.deck.findIndex((el) => el.value.value === 10);
+    // let tempCard = table.deck[0];
+    // table.deck[0] = table.deck[indx];
+    // table.deck[indx] = tempCard;
+
+    // console.log("tempCard ==>", tempCard);
+
     let cardForDealer = table.deck[0];
     let dealerValue = 11;
-    console.log("dealer card value ======>", cardForDealer);
     if (cardForDealer.value.hasAce) {
       dealerValue += 1;
     } else {
@@ -411,7 +418,9 @@ const checkInsurance = async (io, data) => {
         insuredPlayersId.push(el.id);
         el.wallet += dealerValue === 21 ? el.betAmount : 0;
       }
+      return el;
     });
+
     console.log("dealerValue ====>", dealerValue);
     if (dealerValue === 21) {
       io.in(table._id.toString()).emit("insuranceWin", {
@@ -422,6 +431,9 @@ const checkInsurance = async (io, data) => {
         playerIds: insuredPlayersId,
       });
     }
+
+    await roomModel.updateOne({ _id: tableId }, { players: players });
+
     await dealerTurn(io, data);
   } catch (error) {
     console.log("error in checkInsuranceAsk", error);
@@ -485,6 +497,7 @@ export const dealerTurn = async (io, data) => {
     const room = await roomModel.findOne({ tableId });
     let dealer = room.dealer;
     let deck = room.deck;
+
     if (dealer.hasAce === true || deck[0].value.hasAce === true) {
       await dealerAceDeckAce(io, data, room);
     }
@@ -864,6 +877,7 @@ export const splitAction = async (io, socket, data) => {
             "players.$.isSameCard": isSame,
             "players.$.hasAce": isHasAce,
             "players.$.turn": true,
+            "players.$.isActed": true,
             "players.$.action": "split",
             $inc: {
               "players.$.wallet": -player.betAmount,
@@ -1437,6 +1451,17 @@ const dealerAceDeckAce = async (io, data, room) => {
   console.log("dealer ace deck executed");
   try {
     let { tableId, dealer, deck } = room;
+    // // let indx = deck.findIndex(
+    // //   (el) => el.value.value === 10 && el.value.card === "T"
+    // // );
+    // // let tempCard = deck[0];
+    // // deck[0] = deck[indx];
+    // // deck[indx] = deck[tempCard];
+    // // console.log("deck ==>", deck);
+    // // console.log("indx ==>", indx);
+
+    // console.log("deck 0 ==>", deck[0]);
+
     if (dealer.hasAce && deck[0].value.hasAce) {
       dealer.sum[0] = dealer.sum[0] + 1; // add sum
       dealer.sum[1] = dealer.sum[1] + 1; // add sum
