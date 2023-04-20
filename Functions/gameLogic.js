@@ -364,7 +364,9 @@ const checkEveryOneHasInsuredOrNot = async (io, data) => {
       } else {
         const acted = await checkEveryOneActed(io, data, playingCount);
         if (acted) {
+          console.log("acted ==>", acted);
           clearInterval(interval);
+          await checkInsurance(io, data);
         }
         intervalCount++;
       }
@@ -385,8 +387,6 @@ const checkEveryOneActed = async (io, data, playingCount) => {
       typeof table.actedForInsurace
     );
     if (playingCount === table.actedForInsurace) {
-      console.log("enterd in playing count");
-      await checkInsurance(io, data);
       return true;
     }
   } catch (error) {
