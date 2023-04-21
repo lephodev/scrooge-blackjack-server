@@ -635,7 +635,7 @@ export const startPreGameTimer = async (io, socket, data) => {
       const room = await roomModel.findOne({
         $and: [{ tableId }, { gamestart: false }],
       });
-      if (room?.remainingPretimer >= -1) {
+      if (room?.remainingPretimer >= 0) {
         console.log("REMAINING TIMER ", room.remainingPretimer);
         io.in(tableId).emit("preTimer", {
           timer: 5,
