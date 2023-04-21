@@ -236,7 +236,7 @@ export const joinGame = async (io, socket, data) => {
       lastSocketData.push({ room: tableId, pretimer: false });
       const userData = await User.findOne({ _id: convertMongoId(userid) });
       let updationObject = {};
-      if (userData?.gameMode !== "goldCoin") {
+      if (room?.gameMode !== "goldCoin") {
         updationObject = {
           wallet: userData?.wallet - amount,
         };
@@ -635,7 +635,7 @@ export const startPreGameTimer = async (io, socket, data) => {
       const room = await roomModel.findOne({
         $and: [{ tableId }, { gamestart: false }],
       });
-      if (room?.remainingPretimer >= -1) {
+      if (room?.remainingPretimer >= 0) {
         console.log("REMAINING TIMER ", room.remainingPretimer);
         io.in(tableId).emit("preTimer", {
           timer: 5,
@@ -750,6 +750,17 @@ export const startGame = async (io, data) => {
             //   deck[0] = deck[index];
             //   deck[index] = temp;
             // }
+
+            let index;
+            let temp;
+
+            // if (item === 1) {
+            // index = deck.findIndex((el) => el.value.card === "A");
+            // temp = deck[0];
+            // deck[0] = deck[index];
+            // deck[index] = temp;
+            // }
+
             players[i].cards.push(deck[0]);
             deck.shift();
             // }
@@ -762,10 +773,6 @@ export const startGame = async (io, data) => {
           }
         });
         if (item === 1) {
-          // const index = deck.findIndex((el) => el.value.card === "A");
-          // let temp = deck[0];
-          // deck[0] = deck[index];
-          // deck[index] = temp;
           dealer.cards.push(deck[0]);
           deck.shift();
           dealer.sum = dealer.cards[0].value.value;
@@ -1549,7 +1556,7 @@ export const leaveApiCall = async (room, userId) => {
       console.log("elUser ====>", elUser.gameMode);
       allTransactions = [...allTransactions, ...transactions];
       let updationObject = {};
-      if (elUser.gameMode !== "goldCoin") {
+      if (room?.gameMode !== "goldCoin") {
         updationObject = {
           wallet: elUser?.wallet ? elUser?.wallet : 0,
           ticket: totalTicketsWin,
@@ -1557,7 +1564,7 @@ export const leaveApiCall = async (room, userId) => {
       } else {
         updationObject = {
           goldCoin: elUser?.wallet ? elUser?.wallet : 0,
-          ticket: totalTicketsWin,
+          // ticket: totalTicketsWin,
         };
       }
       console.log("updationObject =====>", updationObject);
@@ -1643,6 +1650,18 @@ export const checkRoom = async (data, socket, io) => {
 
     const roomData = await roomModel.findOne({ tableId });
     const sitAmount = typeof sitInAmount === "number" ? sitInAmount : 0;
+    console.log(
+      "checkingggg ===>",
+      roomData?.gameMode,
+      userData?.goldCoin,
+      sitAmount
+    );
+    if (roomData?.gameMode === "goldCoin" && userData?.goldCoin < sitAmount) {
+      return socket.emit("notEnoughtGoldCoin", {
+        message: "You don't have enough gold coins.",
+      });
+    }
+
     const payload = {
       user: {
         nickname: userData.username,
