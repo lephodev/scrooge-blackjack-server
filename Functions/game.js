@@ -1638,10 +1638,12 @@ export const leaveApiCall = async (room, userId) => {
 
 export const checkRoom = async (data, socket, io) => {
   try {
-    const { tableId, userId, gameType, sitInAmount } = data;
-    console.log({ data });
+    console.log("data =>", data);
+    const { tableId, userId, gameType, sitInAmount,gameMode } = data;
+    console.log("vgfg",{ data });
     const userData = await userModel.findOne({ _id: convertMongoId(userId) });
     if (!userData) {
+      console.log("redirect to client");
       socket.emit("redirectToClient");
       return;
     }
@@ -1712,7 +1714,18 @@ export const checkRoom = async (data, socket, io) => {
       if (!sitAmount) {
         return socket.emit("notjoined");
       }
+      if(gameMode==="goldCoin"){
       if (
+        !sitAmount ||
+        sitInAmount < 5 ||
+        sitAmount > userData.goldCoin ||
+        !/^\d+$/.test(sitInAmount)
+      ) {
+        socket.emit("redirectToClient");
+        return;
+      }}
+   if(gameMode==="token"){
+       if (
         !sitAmount ||
         sitInAmount < 5 ||
         sitAmount > userData.wallet ||
@@ -1721,7 +1734,7 @@ export const checkRoom = async (data, socket, io) => {
         socket.emit("redirectToClient");
         return;
       }
-
+    }
       joinGame(io, socket, payload);
     } else {
       // if there is no userid and user in some other games so we will redirect user
