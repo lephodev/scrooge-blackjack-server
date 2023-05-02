@@ -516,9 +516,19 @@ export const exitRoom = async (io, socket, data) => {
       const res = await leaveApiCall(roomdata, userId);
       console.log({ res });
       if (res) {
-        await roomModel.deleteOne({
-          tableId,
+        const noOfRooms = await roomModel.countDocuments({
+          public: true,
+          finish: false,
         });
+
+        console.log("no of rooms ===>", noOfRooms);
+
+        if (noOfRooms > 2) {
+          await roomModel.deleteOne({
+            tableId,
+          });
+        }
+
         let copy = { ...io.typingUser };
         if (copy) {
           for (let key in copy) {
@@ -592,9 +602,18 @@ export const exitRoom = async (io, socket, data) => {
           console.log("SEND ROOM DATA IF ANY OF THE PLAYER LEAVES");
           io.in(tableId).emit("updateRoom", room);
         } else {
-          await roomModel.deleteOne({
-            tableId,
+          const noOfRooms = await roomModel.countDocuments({
+            public: true,
+            finish: false,
           });
+
+          console.log("no of rooms ===>", noOfRooms);
+          if (noOfRooms > 2) {
+            await roomModel.deleteOne({
+              tableId,
+            });
+          }
+
           let copy = { ...io.typingUser };
           if (copy) {
             for (let key in copy) {
@@ -1639,8 +1658,8 @@ export const leaveApiCall = async (room, userId) => {
 export const checkRoom = async (data, socket, io) => {
   try {
     console.log("data =>", data);
-    const { tableId, userId, gameType, sitInAmount,gameMode } = data;
-    console.log("vgfg",{ data });
+    const { tableId, userId, gameType, sitInAmount, gameMode } = data;
+    console.log("vgfg", { data });
     const userData = await userModel.findOne({ _id: convertMongoId(userId) });
     if (!userData) {
       console.log("redirect to client");
@@ -1714,27 +1733,28 @@ export const checkRoom = async (data, socket, io) => {
       if (!sitAmount) {
         return socket.emit("notjoined");
       }
-      if(gameMode==="goldCoin"){
-      if (
-        !sitAmount ||
-        sitInAmount < 5 ||
-        sitAmount > userData.goldCoin ||
-        !/^\d+$/.test(sitInAmount)
-      ) {
-        socket.emit("redirectToClient");
-        return;
-      }}
-   if(gameMode==="token"){
-       if (
-        !sitAmount ||
-        sitInAmount < 5 ||
-        sitAmount > userData.wallet ||
-        !/^\d+$/.test(sitInAmount)
-      ) {
-        socket.emit("redirectToClient");
-        return;
+      if (gameMode === "goldCoin") {
+        if (
+          !sitAmount ||
+          sitInAmount < 5 ||
+          sitAmount > userData.goldCoin ||
+          !/^\d+$/.test(sitInAmount)
+        ) {
+          socket.emit("redirectToClient");
+          return;
+        }
       }
-    }
+      if (gameMode === "token") {
+        if (
+          !sitAmount ||
+          sitInAmount < 5 ||
+          sitAmount > userData.wallet ||
+          !/^\d+$/.test(sitInAmount)
+        ) {
+          socket.emit("redirectToClient");
+          return;
+        }
+      }
       joinGame(io, socket, payload);
     } else {
       // if there is no userid and user in some other games so we will redirect user
