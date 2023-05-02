@@ -519,6 +519,7 @@ export const exitRoom = async (io, socket, data) => {
         const noOfRooms = await roomModel.countDocuments({
           public: true,
           finish: false,
+          gameMode: roomdata.gameMode,
         });
 
         console.log("no of rooms ===>", noOfRooms);
@@ -605,6 +606,7 @@ export const exitRoom = async (io, socket, data) => {
           const noOfRooms = await roomModel.countDocuments({
             public: true,
             finish: false,
+            gameMode: room.gameMode,
           });
 
           console.log("no of rooms ===>", noOfRooms);

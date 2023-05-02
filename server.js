@@ -191,6 +191,7 @@ app.get("/leaveGame/:tableId/:userId", async (req, res) => {
         const noOfRooms = await roomModel.countDocuments({
           public: true,
           finish: false,
+          gameMode: roomdata.gameMode,
         });
 
         console.log("no of rooms ===> 196", noOfRooms);
