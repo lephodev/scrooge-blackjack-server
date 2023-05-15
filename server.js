@@ -186,11 +186,22 @@ app.get("/leaveGame/:tableId/:userId", async (req, res) => {
       })
       .lean();
     if (roomdata && roomdata.players?.length <= 1) {
-      const ress = await leaveApiCall(roomdata);
+      const ress = await leaveApiCall(roomdata, userId);
       if (ress) {
-        await roomModel.deleteOne({
-          tableId,
+        const noOfRooms = await roomModel.countDocuments({
+          public: true,
+          finish: false,
+          gameMode: roomdata.gameMode,
         });
+
+        console.log("no of rooms ===> 196", noOfRooms);
+
+        if (noOfRooms > 2) {
+          await roomModel.deleteOne({
+            tableId,
+          });
+        }
+
         let copy = { ...io.typingUser };
         if (copy) {
           for (let key in copy) {
