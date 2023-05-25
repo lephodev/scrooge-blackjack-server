@@ -1828,12 +1828,27 @@ export const checkLimits = async (userId, gameMode, sitInAmount, user) => {
             : todayTransactions[0].prevWallet -
               todayTransactions[0].updatedWallet;
       } else {
-        spndedToday =
-          gameMode === "goldCoin"
-            ? todayTransactions[0].updatedGoldCoin -
-              todayTransactions[todayTransactions.length - 1].updatedGoldCoin
-            : todayTransactions[0].updatedWallet -
-              todayTransactions[todayTransactions.length - 1].updatedWallet;
+        // spndedToday =
+        //   gameMode === "goldCoin"
+        //     ? todayTransactions[0].updatedGoldCoin -
+        //       todayTransactions[todayTransactions.length - 1].updatedGoldCoin
+        //     : todayTransactions[0].updatedWallet -
+        //       todayTransactions[todayTransactions.length - 1].updatedWallet;
+        if (gameMode === "goldCoin") {
+          todayTransactions
+            .filter((obj) => obj.updatedGoldCoin !== obj.prevGoldCoin)
+            .forEach((obj) => {
+              spndedToday +=
+                parseFloat(obj.prevGoldCoin) - parseFloat(obj.updatedGoldCoin);
+            });
+        } else {
+          todayTransactions
+            .filter((obj) => obj.prevWallet !== obj.updatedWallet)
+            .forEach((obj) => {
+              spndedToday +=
+                parseFloat(obj.prevWallet) - parseFloat(obj.updatedWallet);
+            });
+        }
       }
       // console.log(
       //   "spndedToday =====>",
@@ -1903,14 +1918,14 @@ export const checkLimits = async (userId, gameMode, sitInAmount, user) => {
               weeklyTransactions[0].updatedWallet;
       } else {
         if (gameMode === "goldCoin") {
-          spndedWeekly = weeklyTransactions
+          weeklyTransactions
             .filter((obj) => obj.updatedGoldCoin !== obj.prevGoldCoin)
             .forEach((obj) => {
               spndedWeekly +=
                 parseFloat(obj.prevGoldCoin) - parseFloat(obj.updatedGoldCoin);
             });
         } else {
-          spndedWeekly = weeklyTransactions
+          weeklyTransactions
             .filter((obj) => obj.prevWallet !== obj.updatedWallet)
             .forEach((obj) => {
               spndedWeekly +=
