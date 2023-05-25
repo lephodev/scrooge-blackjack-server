@@ -1818,7 +1818,7 @@ export const checkLimits = async (userId, gameMode, sitInAmount, user) => {
       ],
     });
     console.log("todayTransactions =====>", gameMode, todayTransactions);
-    if (todayTransactions) {
+    if (todayTransactions.length) {
       let spndedToday = 0;
       if (todayTransactions.length === 1) {
         spndedToday =
@@ -1850,7 +1850,7 @@ export const checkLimits = async (userId, gameMode, sitInAmount, user) => {
         };
       } else if (
         gameMode === "token" &&
-        spndedToday + sitInAmount >= user.dailyTokenSpendingLimit
+        spndedToday + sitInAmount > user.dailyTokenSpendingLimit
       ) {
         return {
           success: false,
@@ -1858,21 +1858,26 @@ export const checkLimits = async (userId, gameMode, sitInAmount, user) => {
         };
       }
     } else {
+      console.log(
+        "spndedMonthly =====>",
+        sitInAmount,
+        user.monthlyGoldCoinSpendingLimit
+      );
       if (
         gameMode === "goldCoin" &&
         sitInAmount > user.dailyGoldCoinSpendingLimit
       ) {
         return {
           success: false,
-          message: "Your daily spending limit for goldcoins has been exhausted",
+          message: "Your sitin amount is exceeding your daily spending limit",
         };
       } else if (
         gameMode === "token" &&
-        sitInAmount >= user.dailyTokenSpendingLimit
+        sitInAmount > user.dailyTokenSpendingLimit
       ) {
         return {
           success: false,
-          message: "Your daily spending limit for tokens has been exhausted",
+          message: "Your sitin amount is exceeding your daily spending limit",
         };
       }
     }
@@ -1887,7 +1892,7 @@ export const checkLimits = async (userId, gameMode, sitInAmount, user) => {
       ],
     });
 
-    if (weeklyTransactions) {
+    if (weeklyTransactions.length) {
       let spndedWeekly = 0;
       if (weeklyTransactions.length === 1) {
         spndedWeekly =
@@ -1924,11 +1929,29 @@ export const checkLimits = async (userId, gameMode, sitInAmount, user) => {
         };
       } else if (
         gameMode === "token" &&
-        spndedWeekly + sitInAmount >= user.weeklyTokenSpendingLimit
+        spndedWeekly + sitInAmount > user.weeklyTokenSpendingLimit
       ) {
         return {
           success: false,
           message: "Your weekly spending limit for tokens has been exhausted",
+        };
+      }
+    } else {
+      if (
+        gameMode === "goldCoin" &&
+        sitInAmount > user.weeklyGoldCoinSpendingLimit
+      ) {
+        return {
+          success: false,
+          message: "Your sitin amount is exceeding your weekly spending limit",
+        };
+      } else if (
+        gameMode === "token" &&
+        sitInAmount > user.weeklyTokenSpendingLimit
+      ) {
+        return {
+          success: false,
+          message: "Your sitin amount is exceeding your weekly spending limit",
         };
       }
     }
@@ -1949,7 +1972,7 @@ export const checkLimits = async (userId, gameMode, sitInAmount, user) => {
       ],
     });
 
-    if (monthlyTransactions) {
+    if (monthlyTransactions.length) {
       let spndedMonthly = 0;
       if (monthlyTransactions.length === 1) {
         spndedMonthly =
@@ -1992,11 +2015,29 @@ export const checkLimits = async (userId, gameMode, sitInAmount, user) => {
         };
       } else if (
         gameMode === "token" &&
-        spndedMonthly + sitInAmount >= user.monthlyTokenSpendingLimit
+        spndedMonthly + sitInAmount > user.monthlyTokenSpendingLimit
       ) {
         return {
           success: false,
           message: "Your weekly spending limit for tokens has been exhausted",
+        };
+      }
+    } else {
+      if (
+        gameMode === "goldCoin" &&
+        sitInAmount > user.monthlyGoldCoinSpendingLimit
+      ) {
+        return {
+          success: false,
+          message: "Your sitin amount is exceeding your weekly spending limit",
+        };
+      } else if (
+        gameMode === "token" &&
+        sitInAmount > user.monthlyTokenSpendingLimit
+      ) {
+        return {
+          success: false,
+          message: "Your sitin amount is exceeding your weekly spending limit",
         };
       }
     }
