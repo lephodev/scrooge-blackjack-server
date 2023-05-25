@@ -1,4 +1,13 @@
+def COLOR_MAP = [
+    'SUCCESS': 'good', 
+    'FAILURE': 'danger',
+]
 pipeline {
+
+    environment {
+        // test variable: 0=success, 1=fail; must be string
+        doError = '0'
+    }
   agent any
   stages {
     stage('Upload Build') {
@@ -13,4 +22,14 @@ cd /home/ubuntu/blackjack-server && pm2 start ecosystem.config.json''', execTime
             }
         }
   }
+ post {
+        always {
+
+            
+            slackSend channel: 'buildstatus',
+                color: COLOR_MAP[currentBuild.currentResult],
+                   message: "*${currentBuild.currentResult}:* Job ${env.JOB_NAME} build ${env.BUILD_NUMBER}\n More info at: ${env.BUILD_URL}console"
+             
+        }
+    }
 }
