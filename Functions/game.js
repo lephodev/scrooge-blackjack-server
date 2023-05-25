@@ -1857,6 +1857,24 @@ export const checkLimits = async (userId, gameMode, sitInAmount, user) => {
           message: "Your daily spending limit for tokens has been exhausted",
         };
       }
+    } else {
+      if (
+        gameMode === "goldCoin" &&
+        sitInAmount > user.dailyGoldCoinSpendingLimit
+      ) {
+        return {
+          success: false,
+          message: "Your daily spending limit for goldcoins has been exhausted",
+        };
+      } else if (
+        gameMode === "token" &&
+        sitInAmount >= user.dailyTokenSpendingLimit
+      ) {
+        return {
+          success: false,
+          message: "Your daily spending limit for tokens has been exhausted",
+        };
+      }
     }
 
     let weeklyStartDate = getLastSunday().toDateString();
