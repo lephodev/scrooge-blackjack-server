@@ -1850,7 +1850,7 @@ export const checkLimits = async (userId, gameMode, sitInAmount, user) => {
         };
       } else if (
         gameMode === "token" &&
-        spndedToday + sitInAmount >= user.dailyTokenSpendingLimit
+        spndedToday + sitInAmount > user.dailyTokenSpendingLimit
       ) {
         return {
           success: false,
@@ -1858,6 +1858,11 @@ export const checkLimits = async (userId, gameMode, sitInAmount, user) => {
         };
       }
     } else {
+      console.log(
+        "spndedMonthly =====>",
+        sitInAmount,
+        user.monthlyGoldCoinSpendingLimit
+      );
       if (
         gameMode === "goldCoin" &&
         sitInAmount > user.dailyGoldCoinSpendingLimit
@@ -1868,7 +1873,7 @@ export const checkLimits = async (userId, gameMode, sitInAmount, user) => {
         };
       } else if (
         gameMode === "token" &&
-        sitInAmount >= user.dailyTokenSpendingLimit
+        sitInAmount > user.dailyTokenSpendingLimit
       ) {
         return {
           success: false,
@@ -1924,7 +1929,7 @@ export const checkLimits = async (userId, gameMode, sitInAmount, user) => {
         };
       } else if (
         gameMode === "token" &&
-        spndedWeekly + sitInAmount >= user.weeklyTokenSpendingLimit
+        spndedWeekly + sitInAmount > user.weeklyTokenSpendingLimit
       ) {
         return {
           success: false,
@@ -1942,7 +1947,7 @@ export const checkLimits = async (userId, gameMode, sitInAmount, user) => {
         };
       } else if (
         gameMode === "token" &&
-        sitInAmount >= user.weeklyTokenSpendingLimit
+        sitInAmount > user.weeklyTokenSpendingLimit
       ) {
         return {
           success: false,
@@ -2010,7 +2015,7 @@ export const checkLimits = async (userId, gameMode, sitInAmount, user) => {
         };
       } else if (
         gameMode === "token" &&
-        spndedMonthly + sitInAmount >= user.monthlyTokenSpendingLimit
+        spndedMonthly + sitInAmount > user.monthlyTokenSpendingLimit
       ) {
         return {
           success: false,
@@ -2028,7 +2033,7 @@ export const checkLimits = async (userId, gameMode, sitInAmount, user) => {
         };
       } else if (
         gameMode === "token" &&
-        sitInAmount >= user.monthlyTokenSpendingLimit
+        sitInAmount > user.monthlyTokenSpendingLimit
       ) {
         return {
           success: false,
