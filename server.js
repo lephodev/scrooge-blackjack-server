@@ -6,7 +6,7 @@ import { Server } from "socket.io";
 import socketConnection from "./socketConnection/index.js";
 import mongoConnect from "./config/dbConnection.js";
 import roomModel from "./modals/roomModal.js";
-import { leaveApiCall } from "./Functions/game.js";
+import { checkLimits, leaveApiCall } from "./Functions/game.js";
 import { changeAdmin, getUserId } from "./firestore/dbFetch.js";
 import mongoose from "mongoose";
 import User from "./landing-server/models/user.model.js";
@@ -403,6 +403,20 @@ app.post("/createTable", auth(), async (req, res) => {
       valid = false;
     }
 
+    const limit = await checkLimits(
+      _id,
+      gameMode,
+      parseFloat(sitInAmount),
+      req.user
+    );
+
+    console.log("limits ===>", limit);
+
+    if (!limit?.success) {
+      res.status(403).send({ ...err, message: limit.message });
+      return;
+    }
+
     if (!valid) {
       // console.log({err},"gameMode",gameMode);
       return res.status(403).send({ ...err, message: "Invalid data" });
@@ -554,10 +568,37 @@ app.post("/refillWallet", auth(), async (req, res) => {
       return res.status(403).send({ msg: "You don't have enough gold coin" });
     }
 
+    console.log("room.players ===>", room.players);
+
+    let player = room.players.find(
+      (el) => el.id.toString() === (user._id || user.id).toString()
+    );
+
+    let totalHands = 0;
+    player.hands.forEach((el) => {
+      if (el.action === "game-lose") {
+        totalHands += el.amount;
+      }
+    });
+
     if (amount > user.wallet) {
       return res
         .status(403)
         .send({ msg: "You don't have enough balance in your wallet" });
+    }
+
+    const limit = await checkLimits(
+      user._id || user.id,
+      room?.gameMode,
+      parseFloat(amount) + player?.wallet + totalHands,
+      user
+    );
+
+    console.log("limits ===>", limit);
+
+    if (!limit?.success) {
+      res.status(403).send({ msg: limit.message });
+      return;
     }
 
     await roomModel.updateOne(
