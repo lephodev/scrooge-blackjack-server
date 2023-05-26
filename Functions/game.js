@@ -1757,14 +1757,14 @@ export const checkRoom = async (data, socket, io) => {
           return;
         }
       }
-      const limit = await checkLimits(userId, gameMode, sitInAmount, userData);
-      console.log("limits ==>", limit);
-      if (!limit?.success) {
-        io.emit("spendingLimitExceeeds", {
-          message: limit?.message,
-        });
-        return;
-      }
+      // const limit = await checkLimits(userId, gameMode, sitInAmount, userData);
+      // console.log("limits ==>", limit);
+      // if (!limit?.success) {
+      //   io.emit("spendingLimitExceeeds", {
+      //     message: limit?.message,
+      //   });
+      //   return;
+      // }
 
       joinGame(io, socket, payload);
     } else {
