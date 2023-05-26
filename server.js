@@ -6,7 +6,7 @@ import { Server } from "socket.io";
 import socketConnection from "./socketConnection/index.js";
 import mongoConnect from "./config/dbConnection.js";
 import roomModel from "./modals/roomModal.js";
-import { checkLimits, leaveApiCall } from "./Functions/game.js";
+import { leaveApiCall } from "./Functions/game.js"; //checkLimits,
 import { changeAdmin, getUserId } from "./firestore/dbFetch.js";
 import mongoose from "mongoose";
 import User from "./landing-server/models/user.model.js";
@@ -403,19 +403,19 @@ app.post("/createTable", auth(), async (req, res) => {
       valid = false;
     }
 
-    const limit = await checkLimits(
-      _id,
-      gameMode,
-      parseFloat(sitInAmount),
-      req.user
-    );
+    // const limit = await checkLimits(
+    //   _id,
+    //   gameMode,
+    //   parseFloat(sitInAmount),
+    //   req.user
+    // );
 
-    console.log("limits ===>", limit);
+    // console.log("limits ===>", limit);
 
-    if (!limit?.success) {
-      res.status(403).send({ ...err, message: limit.message });
-      return;
-    }
+    // if (!limit?.success) {
+    //   res.status(403).send({ ...err, message: limit.message });
+    //   return;
+    // }
 
     if (!valid) {
       // console.log({err},"gameMode",gameMode);
@@ -587,19 +587,19 @@ app.post("/refillWallet", auth(), async (req, res) => {
         .send({ msg: "You don't have enough balance in your wallet" });
     }
 
-    const limit = await checkLimits(
-      user._id || user.id,
-      room?.gameMode,
-      parseFloat(amount) + player?.wallet + totalHands,
-      user
-    );
+    // const limit = await checkLimits(
+    //   user._id || user.id,
+    //   room?.gameMode,
+    //   parseFloat(amount) + player?.wallet + totalHands,
+    //   user
+    // );
 
-    console.log("limits ===>", limit);
+    // console.log("limits ===>", limit);
 
-    if (!limit?.success) {
-      res.status(403).send({ msg: limit.message });
-      return;
-    }
+    // if (!limit?.success) {
+    //   res.status(403).send({ msg: limit.message });
+    //   return;
+    // }
 
     await roomModel.updateOne(
       {
