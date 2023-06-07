@@ -549,26 +549,40 @@ app.get("/check-auth", auth(), async (req, res) => {
 app.post("/refillWallet", auth(), async (req, res) => {
   try {
     const user = req.user;
-    let { tableId, amount } = req.body;
-
+    let { tableId, amount,mode } = req.body;
+    amount = parseInt(amount);
+    const room =await roomModel.findOne({_id:tableId})
+    if(!mode){
+      return res.status(403).send({ msg: "Please select game mode!" });
+    }
     if (!tableId || !amount) {
       return res.status(403).send({ msg: "Invalid data" });
     }
-
-    amount = parseInt(amount);
-
-    const room = await roomModel.findOne({
-      _id: tableId,
-    });
-
+    if (amount < 5) {
+      return res.status(403).send({ msg: "Minimum amount to enter is 5." });
+    }  
+    if (amount > user?.wallet && mode ==='token') {
+      return res
+        .status(403)
+        .send({ msg: "You don't have enough balance in your wallet" });
+    }
+    if (amount > user?.goldCoin && mode ==='goldCoin') {
+      return res
+        .status(403)
+        .send({ msg: "You don't have enough gold Coins in your wallet" });
+    }
     if (
-      room?.gameMode.toString().toLowerCase() === "goldcoin" &&
+      room?.gameMode?.toString()?.toLowerCase() === "goldCoin" &&
       user?.goldCoin < amount
     ) {
       return res.status(403).send({ msg: "You don't have enough gold coin" });
     }
-
-    console.log("room.players ===>", room.players);
+    if (
+      room?.gameMode?.toString()?.toLowerCase() === "token" &&
+      user?.wallet < amount
+    ) {
+      return res.status(403).send({ msg: "You don't have enough wallet" });
+    }
 
     let player = room.players.find(
       (el) => el.id.toString() === (user._id || user.id).toString()
