@@ -234,9 +234,22 @@ export const joinGame = async (io, socket, data) => {
       socket.emit("joined");
       let lastSocketData = io.room;
       lastSocketData.push({ room: tableId, pretimer: false });
+      const userData = await User.findOne({ _id: convertMongoId(userid) });
+      let updationObject = {};
+      if (room?.gameMode !== "goldCoin") {
+        updationObject = {
+          wallet: userData?.wallet - amount,
+        };
+      } else {
+        updationObject = {
+          goldCoin: userData?.goldCoin - amount,
+        };
+      }
+      console.log("updationObject =====>", updationObject);
       await User.updateOne(
         { _id: convertMongoId(userid) },
-        { wallet: originalWalletBalance - amount }
+        // { wallet: originalWalletBalance - amount }
+        updationObject
       );
       io.room = [...new Set(lastSocketData.map((ele) => ele.room))].map(
         (el) => {
@@ -503,9 +516,20 @@ export const exitRoom = async (io, socket, data) => {
       const res = await leaveApiCall(roomdata, userId);
       console.log({ res });
       if (res) {
-        await roomModel.deleteOne({
-          tableId,
+        const noOfRooms = await roomModel.countDocuments({
+          public: true,
+          finish: false,
+          gameMode: roomdata.gameMode,
         });
+
+        console.log("no of rooms ===>", noOfRooms);
+
+        if (noOfRooms > 2) {
+          await roomModel.deleteOne({
+            tableId,
+          });
+        }
+
         let copy = { ...io.typingUser };
         if (copy) {
           for (let key in copy) {
@@ -579,9 +603,19 @@ export const exitRoom = async (io, socket, data) => {
           console.log("SEND ROOM DATA IF ANY OF THE PLAYER LEAVES");
           io.in(tableId).emit("updateRoom", room);
         } else {
-          await roomModel.deleteOne({
-            tableId,
+          const noOfRooms = await roomModel.countDocuments({
+            public: true,
+            finish: false,
+            gameMode: room.gameMode,
           });
+
+          console.log("no of rooms ===>", noOfRooms);
+          if (noOfRooms > 2) {
+            await roomModel.deleteOne({
+              tableId,
+            });
+          }
+
           let copy = { ...io.typingUser };
           if (copy) {
             for (let key in copy) {
@@ -622,7 +656,7 @@ export const startPreGameTimer = async (io, socket, data) => {
       const room = await roomModel.findOne({
         $and: [{ tableId }, { gamestart: false }],
       });
-      if (room?.remainingPretimer >= -1) {
+      if (room?.remainingPretimer >= 0) {
         console.log("REMAINING TIMER ", room.remainingPretimer);
         io.in(tableId).emit("preTimer", {
           timer: 5,
@@ -737,6 +771,17 @@ export const startGame = async (io, data) => {
             //   deck[0] = deck[index];
             //   deck[index] = temp;
             // }
+
+            let index;
+            let temp;
+
+            // if (item === 1) {
+            // index = deck.findIndex((el) => el.value.card === "A");
+            // temp = deck[0];
+            // deck[0] = deck[index];
+            // deck[index] = temp;
+            // }
+
             players[i].cards.push(deck[0]);
             deck.shift();
             // }
@@ -749,10 +794,6 @@ export const startGame = async (io, data) => {
           }
         });
         if (item === 1) {
-          // const index = deck.findIndex((el) => el.value.card === "A");
-          // let temp = deck[0];
-          // deck[0] = deck[index];
-          // deck[index] = temp;
           dealer.cards.push(deck[0]);
           deck.shift();
           dealer.sum = dealer.cards[0].value.value;
@@ -1279,6 +1320,8 @@ const userTotalWinAmount = (coinsBeforeJoin, hands, userId, roomId, wallet,users
       previousWallet,
       previousTickets,
       currentTickets,
+      prevGoldCoin,
+      updatedGoldCoin,
     } = elHand;
 
 
@@ -1296,6 +1339,8 @@ const userTotalWinAmount = (coinsBeforeJoin, hands, userId, roomId, wallet,users
       prevWallet: previousWallet,
       prevTicket: previousTickets,
       updatedTicket: currentTickets,
+      prevGoldCoin,
+      updatedGoldCoin,
       status: action,
     });
 
@@ -1384,6 +1429,7 @@ export const leaveApiCall = async (room, userId) => {
             : false,
         });
       }
+      const user = await User.findOne({ _id: uid });
       users.push({
         uid,
         hands,
@@ -1391,6 +1437,7 @@ export const leaveApiCall = async (room, userId) => {
         coinsBeforeJoin: getUser.coinsBeforeStart,
         gameLeaveAt: new Date(),
         gameJoinedAt: getUser.gameJoinedAt,
+        gameMode: user?.gameMode,
         isWatcher: room.watchers.find(
           (ele) => ele.userid.toString() === uid.toString()
         )
@@ -1398,7 +1445,11 @@ export const leaveApiCall = async (room, userId) => {
           : false,
       });
     } else {
-      allUsers.forEach((item) => {
+      // allUsers.forEach((item) => {
+
+      // });
+      console.log("allUsers ===>", allUsers);
+      for await (let item of allUsers) {
         console.log("handss =>", item.wallet);
         let hands = item.hands ? [...item.hands] : [];
         if (room.gamestart) {
@@ -1412,6 +1463,8 @@ export const leaveApiCall = async (room, userId) => {
           });
         }
         let uid = item.id ? item.id : item.userid;
+        const user = await User.findOne({ _id: uid });
+        console.log("user in loop", user);
         users.push({
           uid,
           hands,
@@ -1422,11 +1475,12 @@ export const leaveApiCall = async (room, userId) => {
           coinsBeforeJoin: item.coinsBeforeStart,
           gameLeaveAt: new Date(),
           gameJoinedAt: item.gameJoinedAt,
+          gameMode: user?.gameMode,
           isWatcher: room.watchers.find((ele) => ele.userid === uid)
             ? true
             : false,
         });
-      });
+      }
     }
 
     let payload = {
@@ -1524,21 +1578,36 @@ export const leaveApiCall = async (room, userId) => {
           profile:elUser.profile
         }
       );
-
-
-      console.log("userBalanceNow ====>", elUser.wallet, typeof elUser.wallet);
-      allTransactions = [...allTransactions, ...transactions];
-      userWinPromise.push(
-        await User.updateOne(
-          { _id: convertMongoId(elUser.uid) },
-          {
-            $inc: {
-              wallet: elUser?.wallet ? elUser?.wallet : 0,
-              ticket: totalTicketsWin,
-            },
-          }
-        )
+      console.log(
+        "userBalanceNow ====>",
+        userBalanceNow,
+        elUser.wallet,
+        typeof elUser.wallet
       );
+      console.log("elUser ====>", elUser.gameMode);
+      allTransactions = [...allTransactions, ...transactions];
+      let updationObject = {};
+      if (room?.gameMode !== "goldCoin") {
+        updationObject = {
+          wallet: elUser?.wallet ? elUser?.wallet : 0,
+          ticket: totalTicketsWin,
+        };
+      } else {
+        updationObject = {
+          goldCoin: elUser?.wallet ? elUser?.wallet : 0,
+          // ticket: totalTicketsWin,
+        };
+      }
+      console.log("updationObject =====>", updationObject);
+      if (elUser)
+        userWinPromise.push(
+          await User.updateOne(
+            { _id: convertMongoId(elUser.uid) },
+            {
+              $inc: updationObject,
+            }
+          )
+        );
       console.log("line 1443");
       if (shouldUpdateStats) {
         statsPromise.push(
@@ -1600,10 +1669,12 @@ export const leaveApiCall = async (room, userId) => {
 
 export const checkRoom = async (data, socket, io) => {
   try {
-    const { tableId, userId, gameType, sitInAmount } = data;
-    console.log({ data });
+    console.log("data =>", data);
+    const { tableId, userId, gameType, sitInAmount, gameMode } = data;
+    console.log("vgfg", { data });
     const userData = await userModel.findOne({ _id: convertMongoId(userId) });
     if (!userData) {
+      console.log("redirect to client");
       socket.emit("redirectToClient");
       return;
     }
@@ -1612,6 +1683,18 @@ export const checkRoom = async (data, socket, io) => {
 
     const roomData = await roomModel.findOne({ tableId });
     const sitAmount = typeof sitInAmount === "number" ? sitInAmount : 0;
+    console.log(
+      "checkingggg ===>",
+      roomData?.gameMode,
+      userData?.goldCoin,
+      sitAmount
+    );
+    if (roomData?.gameMode === "goldCoin" && userData?.goldCoin < sitAmount) {
+      return socket.emit("notEnoughtGoldCoin", {
+        message: "You don't have enough gold coins.",
+      });
+    }
+
     const payload = {
       user: {
         nickname: userData.username,
@@ -1662,15 +1745,36 @@ export const checkRoom = async (data, socket, io) => {
       if (!sitAmount) {
         return socket.emit("notjoined");
       }
-      if (
-        !sitAmount ||
-        sitInAmount < 5 ||
-        sitAmount > userData.wallet ||
-        !/^\d+$/.test(sitInAmount)
-      ) {
-        socket.emit("redirectToClient");
-        return;
+      if (gameMode === "goldCoin") {
+        if (
+          !sitAmount ||
+          sitInAmount < 5 ||
+          sitAmount > userData.goldCoin ||
+          !/^\d+$/.test(sitInAmount)
+        ) {
+          socket.emit("redirectToClient");
+          return;
+        }
       }
+      if (gameMode === "token") {
+        if (
+          !sitAmount ||
+          sitInAmount < 5 ||
+          sitAmount > userData.wallet ||
+          !/^\d+$/.test(sitInAmount)
+        ) {
+          socket.emit("redirectToClient");
+          return;
+        }
+      }
+      // const limit = await checkLimits(userId, gameMode, sitInAmount, userData);
+      // console.log("limits ==>", limit);
+      // if (!limit?.success) {
+      //   io.emit("spendingLimitExceeeds", {
+      //     message: limit?.message,
+      //   });
+      //   return;
+      // }
 
       joinGame(io, socket, payload);
     } else {
@@ -1707,6 +1811,281 @@ export const checkRoom = async (data, socket, io) => {
     console.log("Error in checkRoom =>", error);
   }
 };
+
+export const checkLimits = async (userId, gameMode, sitInAmount, user) => {
+  try {
+    let crrDate = new Date();
+    crrDate.setHours(0);
+    crrDate.setMinutes(0);
+    crrDate.setMilliseconds(0);
+    crrDate = crrDate.toDateString();
+
+    const todayTransactions = await transactionModel.find({
+      $and: [
+        { userId: userId },
+        { createdAt: { $gte: crrDate } },
+        { amount: { $lt: 0 } },
+      ],
+    });
+    console.log("todayTransactions =====>", gameMode, todayTransactions);
+    if (todayTransactions.length) {
+      let spndedToday = 0;
+      if (todayTransactions.length === 1) {
+        spndedToday =
+          gameMode === "goldCoin"
+            ? todayTransactions[0].prevGoldCoin -
+              todayTransactions[0].updatedGoldCoin
+            : todayTransactions[0].prevWallet -
+              todayTransactions[0].updatedWallet;
+      } else {
+        // spndedToday =
+        //   gameMode === "goldCoin"
+        //     ? todayTransactions[0].updatedGoldCoin -
+        //       todayTransactions[todayTransactions.length - 1].updatedGoldCoin
+        //     : todayTransactions[0].updatedWallet -
+        //       todayTransactions[todayTransactions.length - 1].updatedWallet;
+        if (gameMode === "goldCoin") {
+          todayTransactions
+            .filter((obj) => obj.updatedGoldCoin !== obj.prevGoldCoin)
+            .forEach((obj) => {
+              spndedToday +=
+                parseFloat(obj.prevGoldCoin) - parseFloat(obj.updatedGoldCoin);
+            });
+        } else {
+          todayTransactions
+            .filter((obj) => obj.prevWallet !== obj.updatedWallet)
+            .forEach((obj) => {
+              spndedToday +=
+                parseFloat(obj.prevWallet) - parseFloat(obj.updatedWallet);
+            });
+        }
+      }
+      // console.log(
+      //   "spndedToday =====>",
+      //   spndedToday + sitInAmount,
+      //   user.dailyGoldCoinSpendingLimit
+      // );
+      if (
+        gameMode === "goldCoin" &&
+        spndedToday + sitInAmount > user.dailyGoldCoinSpendingLimit
+      ) {
+        return {
+          success: false,
+          message: "Your daily spending limit for goldcoins has been exhausted",
+        };
+      } else if (
+        gameMode === "token" &&
+        spndedToday + sitInAmount > user.dailyTokenSpendingLimit
+      ) {
+        return {
+          success: false,
+          message: "Your daily spending limit for tokens has been exhausted",
+        };
+      }
+    } else {
+      console.log(
+        "spndedMonthly =====>",
+        sitInAmount,
+        user.monthlyGoldCoinSpendingLimit
+      );
+      if (
+        gameMode === "goldCoin" &&
+        sitInAmount > user.dailyGoldCoinSpendingLimit
+      ) {
+        return {
+          success: false,
+          message: "Your sitin amount is exceeding your daily spending limit",
+        };
+      } else if (
+        gameMode === "token" &&
+        sitInAmount > user.dailyTokenSpendingLimit
+      ) {
+        return {
+          success: false,
+          message: "Your sitin amount is exceeding your daily spending limit",
+        };
+      }
+    }
+
+    let weeklyStartDate = getLastSunday().toDateString();
+
+    const weeklyTransactions = await transactionModel.find({
+      $and: [
+        { userId: userId },
+        { createdAt: { $gte: weeklyStartDate } },
+        { amount: { $lt: 0 } },
+      ],
+    });
+
+    if (weeklyTransactions.length) {
+      let spndedWeekly = 0;
+      if (weeklyTransactions.length === 1) {
+        spndedWeekly =
+          gameMode === "goldCoin"
+            ? weeklyTransactions[0].prevGoldCoin -
+              weeklyTransactions[0].updatedGoldCoin
+            : weeklyTransactions[0].prevWallet -
+              weeklyTransactions[0].updatedWallet;
+      } else {
+        if (gameMode === "goldCoin") {
+          weeklyTransactions
+            .filter((obj) => obj.updatedGoldCoin !== obj.prevGoldCoin)
+            .forEach((obj) => {
+              spndedWeekly +=
+                parseFloat(obj.prevGoldCoin) - parseFloat(obj.updatedGoldCoin);
+            });
+        } else {
+          weeklyTransactions
+            .filter((obj) => obj.prevWallet !== obj.updatedWallet)
+            .forEach((obj) => {
+              spndedWeekly +=
+                parseFloat(obj.prevWallet) - parseFloat(obj.updatedWallet);
+            });
+        }
+      }
+      if (
+        gameMode === "goldCoin" &&
+        spndedWeekly + sitInAmount > user.weeklyGoldCoinSpendingLimit
+      ) {
+        return {
+          success: false,
+          message:
+            "Your weekly spending limit for goldcoins has been exhausted",
+        };
+      } else if (
+        gameMode === "token" &&
+        spndedWeekly + sitInAmount > user.weeklyTokenSpendingLimit
+      ) {
+        return {
+          success: false,
+          message: "Your weekly spending limit for tokens has been exhausted",
+        };
+      }
+    } else {
+      if (
+        gameMode === "goldCoin" &&
+        sitInAmount > user.weeklyGoldCoinSpendingLimit
+      ) {
+        return {
+          success: false,
+          message: "Your sitin amount is exceeding your weekly spending limit",
+        };
+      } else if (
+        gameMode === "token" &&
+        sitInAmount > user.weeklyTokenSpendingLimit
+      ) {
+        return {
+          success: false,
+          message: "Your sitin amount is exceeding your weekly spending limit",
+        };
+      }
+    }
+
+    crrDate = new Date();
+    crrDate.setDate(1);
+    crrDate.setHours(0);
+    crrDate.setMinutes(0);
+    crrDate.setMilliseconds(0);
+
+    let monthStartDate = crrDate.toDateString();
+
+    const monthlyTransactions = await transactionModel.find({
+      $and: [
+        { userId: userId },
+        { createdAt: { $gte: monthStartDate } },
+        { amount: { $lt: 0 } },
+      ],
+    });
+
+    if (monthlyTransactions.length) {
+      let spndedMonthly = 0;
+      if (monthlyTransactions.length === 1) {
+        spndedMonthly =
+          gameMode === "goldCoin"
+            ? monthlyTransactions[0].prevGoldCoin -
+              monthlyTransactions[0].updatedGoldCoin
+            : monthlyTransactions[0].prevWallet -
+              monthlyTransactions[0].updatedWallet;
+      } else {
+        if (gameMode === "goldCoin") {
+          monthlyTransactions
+            .filter((obj) => obj.updatedGoldCoin !== obj.prevGoldCoin)
+            .forEach((obj) => {
+              spndedMonthly +=
+                parseFloat(obj.prevGoldCoin) - parseFloat(obj.updatedGoldCoin);
+            });
+        } else {
+          spndedMonthly = monthlyTransactions
+            .filter((obj) => obj.prevWallet !== obj.updatedWallet)
+            .forEach((obj) => {
+              spndedMonthly +=
+                parseFloat(obj.prevWallet) - parseFloat(obj.updatedWallet);
+            });
+        }
+      }
+
+      console.log(
+        "spndedMonthly =====>",
+        spndedMonthly + sitInAmount,
+        user.monthlyGoldCoinSpendingLimit
+      );
+      if (
+        gameMode === "goldCoin" &&
+        spndedMonthly + sitInAmount >= user.monthlyGoldCoinSpendingLimit
+      ) {
+        return {
+          success: false,
+          message:
+            "Your monthly spending limit for goldcoins has been exhausted",
+        };
+      } else if (
+        gameMode === "token" &&
+        spndedMonthly + sitInAmount > user.monthlyTokenSpendingLimit
+      ) {
+        return {
+          success: false,
+          message: "Your weekly spending limit for tokens has been exhausted",
+        };
+      }
+    } else {
+      if (
+        gameMode === "goldCoin" &&
+        sitInAmount > user.monthlyGoldCoinSpendingLimit
+      ) {
+        return {
+          success: false,
+          message: "Your sitin amount is exceeding your weekly spending limit",
+        };
+      } else if (
+        gameMode === "token" &&
+        sitInAmount > user.monthlyTokenSpendingLimit
+      ) {
+        return {
+          success: false,
+          message: "Your sitin amount is exceeding your weekly spending limit",
+        };
+      }
+    }
+
+    return {
+      success: true,
+    };
+  } catch (error) {
+    console.log("error in checklimits ===>", error);
+    return {
+      success: true,
+    };
+  }
+};
+
+function getLastSunday() {
+  var dt = new Date();
+  dt.setDate(dt.getDate() - dt.getDay());
+  dt.setHours(0);
+  dt.setMinutes(0);
+  dt.setMilliseconds(0);
+  return dt;
+}
 
 export const updateChat = async (io, socket, data) => {
   try {

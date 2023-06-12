@@ -6,7 +6,7 @@ import { Server } from "socket.io";
 import socketConnection from "./socketConnection/index.js";
 import mongoConnect from "./config/dbConnection.js";
 import roomModel from "./modals/roomModal.js";
-import { leaveApiCall } from "./Functions/game.js";
+import { leaveApiCall } from "./Functions/game.js"; //checkLimits,
 import { changeAdmin, getUserId } from "./firestore/dbFetch.js";
 import mongoose from "mongoose";
 import User from "./landing-server/models/user.model.js";
@@ -16,6 +16,7 @@ import passport from "passport";
 import Token from "./landing-server/models/Token.model.js";
 import Message from "./modals/messageModal.js";
 import Notification from "./modals/NotificationModal.js";
+import { log } from "console";
 
 const convertMongoId = (id) => mongoose.Types.ObjectId(id);
 
@@ -185,11 +186,22 @@ app.get("/leaveGame/:tableId/:userId", async (req, res) => {
       })
       .lean();
     if (roomdata && roomdata.players?.length <= 1) {
-      const ress = await leaveApiCall(roomdata);
+      const ress = await leaveApiCall(roomdata, userId);
       if (ress) {
-        await roomModel.deleteOne({
-          tableId,
+        const noOfRooms = await roomModel.countDocuments({
+          public: true,
+          finish: false,
+          gameMode: roomdata.gameMode,
         });
+
+        console.log("no of rooms ===> 196", noOfRooms);
+
+        if (noOfRooms > 2) {
+          await roomModel.deleteOne({
+            tableId,
+          });
+        }
+
         let copy = { ...io.typingUser };
         if (copy) {
           for (let key in copy) {
@@ -304,7 +316,7 @@ app.get("/getUserForInvite/:tableId", async (req, res) => {
     const allId = [...leaveReq, ...invPlayers, ...players.map((el) => el.id)];
 
     const allUsers = await User.find({
-      _id: { $nin: allId },
+      //  _id: { $nin: allId },
       isRegistrationComplete: true,
     }).select({ id: 1, username: 1 });
 
@@ -315,7 +327,7 @@ app.get("/getUserForInvite/:tableId", async (req, res) => {
 });
 
 app.get("/getRunningGame", async (req, res) => {
-  const blackjackRooms = await roomModel.find({ public: true, finish: false });
+  const blackjackRooms = await roomModel.find({ finish: false });
   res.status(200).send({ rooms: blackjackRooms });
 });
 
@@ -359,8 +371,14 @@ app.get("/getAllUsers", async (req, res) => {
 
 app.post("/createTable", auth(), async (req, res) => {
   try {
-    const { gameName, public: isPublic, invitedUsers, sitInAmount } = req.body;
-    const { username, wallet, email, _id, avatar } = req.user;
+    const {
+      gameName,
+      public: isPublic,
+      gameMode,
+      invitedUsers,
+      sitInAmount,
+    } = req.body;
+    const { username, wallet, goldCoin, email, _id, avatar } = req.user;
     let valid = true;
     let err = {};
     const mimimumBet = 1;
@@ -373,18 +391,34 @@ app.post("/createTable", auth(), async (req, res) => {
       err.sitInAmount = "Minimum sitting amount is 5.";
       valid = false;
     }
-
-    if (parseFloat(sitInAmount) > wallet) {
+    let newWallet = gameMode === "goldCoin" ? goldCoin : wallet;
+    console.log("current", newWallet);
+    if (parseFloat(sitInAmount) > newWallet) {
       err.sitInAmount = "Sit in amount cant be more then user wallet amount.";
       valid = false;
     }
 
-    if (!wallet) {
+    if (!newWallet) {
       err.gameName = "You don't have enough balance in your wallet.";
       valid = false;
     }
 
+    // const limit = await checkLimits(
+    //   _id,
+    //   gameMode,
+    //   parseFloat(sitInAmount),
+    //   req.user
+    // );
+
+    // console.log("limits ===>", limit);
+
+    // if (!limit?.success) {
+    //   res.status(403).send({ ...err, message: limit.message });
+    //   return;
+    // }
+
     if (!valid) {
+      // console.log({err},"gameMode",gameMode);
       return res.status(403).send({ ...err, message: "Invalid data" });
     }
 
@@ -445,6 +479,7 @@ app.post("/createTable", auth(), async (req, res) => {
       timer: rTimeout,
       gameType: "Blackjack_Tables",
       gameName: gameName,
+      gameMode: gameMode,
       meetingToken: "",
       meetingId: "",
       dealer: {
@@ -458,8 +493,11 @@ app.post("/createTable", auth(), async (req, res) => {
 
     console.log(JSON.stringify(newRoom.players));
     console.log("Usser --> ", req.user);
-    await User.updateOne({ _id }, { wallet: wallet - sitInAmount });
-
+    if (gameMode === "token") {
+      await User.updateOne({ _id }, { wallet: wallet - sitInAmount });
+    } else if (gameMode === "goldCoin") {
+      await User.updateOne({ _id }, { goldCoin: goldCoin - sitInAmount });
+    }
     if (Array.isArray(invitetedPlayerUserId) && invitetedPlayerUserId.length) {
       const sendMessageToInvitedUsers = [
         ...invitetedPlayerUserId.map((el) => {
@@ -511,19 +549,71 @@ app.get("/check-auth", auth(), async (req, res) => {
 app.post("/refillWallet", auth(), async (req, res) => {
   try {
     const user = req.user;
-    let { tableId, amount } = req.body;
-
+    let { tableId, amount,mode } = req.body;
+    amount = parseInt(amount);
+    const room =await roomModel.findOne({_id:tableId})
+    if(!mode){
+      return res.status(403).send({ msg: "Please select game mode!" });
+    }
     if (!tableId || !amount) {
       return res.status(403).send({ msg: "Invalid data" });
     }
+    if (amount < 5) {
+      return res.status(403).send({ msg: "Minimum amount to enter is 5." });
+    }  
+    if (amount > user?.wallet && mode ==='token') {
+      return res
+        .status(403)
+        .send({ msg: "You don't have enough balance in your wallet" });
+    }
+    if (amount > user?.goldCoin && mode ==='goldCoin') {
+      return res
+        .status(403)
+        .send({ msg: "You don't have enough gold Coins in your wallet" });
+    }
+    if (
+      room?.gameMode?.toString()?.toLowerCase() === "goldCoin" &&
+      user?.goldCoin < amount
+    ) {
+      return res.status(403).send({ msg: "You don't have enough gold coin" });
+    }
+    if (
+      room?.gameMode?.toString()?.toLowerCase() === "token" &&
+      user?.wallet < amount
+    ) {
+      return res.status(403).send({ msg: "You don't have enough wallet" });
+    }
 
-    amount = parseInt(amount);
+    let player = room.players.find(
+      (el) => el.id.toString() === (user._id || user.id).toString()
+    );
+
+    let totalHands = 0;
+    player.hands.forEach((el) => {
+      if (el.action === "game-lose") {
+        totalHands += el.amount;
+      }
+    });
 
     if (amount > user.wallet) {
       return res
         .status(403)
         .send({ msg: "You don't have enough balance in your wallet" });
     }
+
+    // const limit = await checkLimits(
+    //   user._id || user.id,
+    //   room?.gameMode,
+    //   parseFloat(amount) + player?.wallet + totalHands,
+    //   user
+    // );
+
+    // console.log("limits ===>", limit);
+
+    // if (!limit?.success) {
+    //   res.status(403).send({ msg: limit.message });
+    //   return;
+    // }
 
     await roomModel.updateOne(
       {
@@ -551,10 +641,15 @@ app.post("/refillWallet", auth(), async (req, res) => {
       io.in(tableId).emit("updateRoom", roomData);
     }
 
-    await User.updateOne(
-      { _id: convertMongoId(user.id) },
-      { $inc: { wallet: -amount } }
-    );
+    let refillObj = {};
+
+    if (room?.gameMode.toString().toLowerCase() !== "goldcoin") {
+      refillObj = { wallet: -amount };
+    } else {
+      refillObj = { goldCoin: -amount };
+    }
+
+    await User.updateOne({ _id: convertMongoId(user.id) }, { $inc: refillObj });
 
     res.status(200).send({ msg: "Success" });
   } catch (error) {
@@ -563,7 +658,7 @@ app.post("/refillWallet", auth(), async (req, res) => {
   }
 });
 
-app.get("/getTablePlayers/:tableId", async (req, res) => {
+app.get("/getTablePlayers", async (req, res) => {
   try {
     const roomData = await roomModel.findOne({ tableId: req.params.tableId });
 
@@ -575,6 +670,23 @@ app.get("/getTablePlayers/:tableId", async (req, res) => {
   } catch (error) {
     console.log(error);
     res.status(500).send({ message: "Internal server error" });
+  }
+});
+
+app.post("/changeGameMode", auth(), async (req, res) => {
+  try {
+    const user = req.user;
+    let { gameMode } = req.body;
+    //  console.log("gameMode",gameMode);
+    await User.updateOne(
+      { _id: convertMongoId(user.id) },
+      { gameMode: gameMode }
+    );
+    let getUpdatedData = await User.findOne({ _id: convertMongoId(user.id) });
+    res.status(200).send({ code: 200, msg: "Success", user: getUpdatedData });
+  } catch (error) {
+    res.status(500).send({ msg: "Internel server error" });
+    console.log(error);
   }
 });
 
