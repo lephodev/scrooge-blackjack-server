@@ -1324,6 +1324,7 @@ const userTotalWinAmount = (coinsBeforeJoin, hands, userId, roomId, wallet,users
       updatedGoldCoin,
     } = elHand;
 
+    console.log("usersData ===========>", usersData)
 
 
     transactions.push({
@@ -1443,6 +1444,14 @@ export const leaveApiCall = async (room, userId) => {
         )
           ? true
           : false,
+        userId:{
+          _id:user._id,
+          username : user.username,
+          email:user.email,
+          firstName:user.firstName,
+          lastName:user.lastName,
+          profile:user.profile
+        }
       });
     } else {
       // allUsers.forEach((item) => {
@@ -1569,14 +1578,7 @@ export const leaveApiCall = async (room, userId) => {
         elUser.uid,
         room.tableId,
         elUser.wallet,
-        {
-          _id,
-          username : elUser.username,
-          email:elUser.email,
-          firstName:elUser.firstName,
-          lastName:elUser.lastName,
-          profile:elUser.profile
-        }
+        elUser?.userId
       );
       console.log(
         "userBalanceNow ====>",
