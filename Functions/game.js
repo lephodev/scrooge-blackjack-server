@@ -1259,7 +1259,7 @@ export const finishHandApiCall = async (room) => {
   }
 };
 
-const userTotalWinAmount = (coinsBeforeJoin, hands, userId, roomId, wallet) => {
+const userTotalWinAmount = (coinsBeforeJoin, hands, userId, roomId, wallet,usersData) => {
   // Wallet balance which user comes with to play the game
   console.log("coinsBeforeJoin ====> " + coinsBeforeJoin);
   let userBalanceNow = wallet ? Number(wallet) : coinsBeforeJoin;
@@ -1281,8 +1281,10 @@ const userTotalWinAmount = (coinsBeforeJoin, hands, userId, roomId, wallet) => {
       currentTickets,
     } = elHand;
 
+
+
     transactions.push({
-      userId,
+      userId:usersData,
       roomId,
       amount:
         action === "game-lose" || action === "game-insurance"
@@ -1512,8 +1514,18 @@ export const leaveApiCall = async (room, userId) => {
         elUser.hands,
         elUser.uid,
         room.tableId,
-        elUser.wallet
+        elUser.wallet,
+        {
+          _id,
+          username : elUser.username,
+          email:elUser.email,
+          firstName:elUser.firstName,
+          lastName:elUser.lastName,
+          profile:elUser.profile
+        }
       );
+
+
       console.log("userBalanceNow ====>", elUser.wallet, typeof elUser.wallet);
       allTransactions = [...allTransactions, ...transactions];
       userWinPromise.push(
