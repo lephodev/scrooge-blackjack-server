@@ -1300,7 +1300,7 @@ export const finishHandApiCall = async (room) => {
   }
 };
 
-const userTotalWinAmount = (coinsBeforeJoin, hands, userId, roomId, wallet) => {
+const userTotalWinAmount = (coinsBeforeJoin, hands, userId, roomId, wallet,usersData) => {
   // Wallet balance which user comes with to play the game
   console.log("coinsBeforeJoin ====> " + coinsBeforeJoin);
   let userBalanceNow = wallet ? Number(wallet) : coinsBeforeJoin;
@@ -1324,8 +1324,11 @@ const userTotalWinAmount = (coinsBeforeJoin, hands, userId, roomId, wallet) => {
       updatedGoldCoin,
     } = elHand;
 
+    console.log("usersData ===========>", usersData)
+
+
     transactions.push({
-      userId,
+      userId:usersData,
       roomId,
       amount:
         action === "game-lose" || action === "game-insurance"
@@ -1441,6 +1444,14 @@ export const leaveApiCall = async (room, userId) => {
         )
           ? true
           : false,
+        userId:{
+          _id:user._id,
+          username : user.username,
+          email:user.email,
+          firstName:user.firstName,
+          lastName:user.lastName,
+          profile:user.profile
+        }
       });
     } else {
       // allUsers.forEach((item) => {
@@ -1566,7 +1577,8 @@ export const leaveApiCall = async (room, userId) => {
         elUser.hands,
         elUser.uid,
         room.tableId,
-        elUser.wallet
+        elUser.wallet,
+        elUser?.userId
       );
       console.log(
         "userBalanceNow ====>",
