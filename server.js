@@ -2,11 +2,12 @@ import express from "express";
 import { createServer } from "http";
 import dotenv from "dotenv";
 import cors from "cors";
+import helmet from 'helmet';
 import { Server } from "socket.io";
 import socketConnection from "./socketConnection/index.js";
 import mongoConnect from "./config/dbConnection.js";
 import roomModel from "./modals/roomModal.js";
-import { leaveApiCall } from "./Functions/game.js";
+import { leaveApiCall } from "./Functions/game.js"; //checkLimits,
 import { changeAdmin, getUserId } from "./firestore/dbFetch.js";
 import mongoose from "mongoose";
 import User from "./landing-server/models/user.model.js";
@@ -17,6 +18,7 @@ import Token from "./landing-server/models/Token.model.js";
 import Message from "./modals/messageModal.js";
 import Notification from "./modals/NotificationModal.js";
 import { log } from "console";
+import logger from "./config/logger.js";
 
 const convertMongoId = (id) => mongoose.Types.ObjectId(id);
 
@@ -46,10 +48,47 @@ app.use(
   })
 );
 
-app.use(cors());
+app.use(
+  cors({
+    origin: [
+      'http://localhost:3000',
+      'http://localhost:3001',
+      'http://localhost:3004',
+      'https://scrooge.casino',
+      'https://poker.scrooge.casino',
+      'https://blackjack.scrooge.casino',
+      'https://slot.scrooge.casino',
+      'https://admin.scrooge.casino',
+      'https://market.scrooge.casino',
+      'https://roulette.scrooge.casino',
+      'https://dev.scrooge.casino',
+      'https://devpoker.scrooge.casino',
+      'https://devslot.scrooge.casino',
+      'https://devblackjack.scrooge.casino',
+      'https://devadmin.scrooge.casino',
+      'https://devmarket.scrooge.casino',
+      'https://devroulette.scrooge.casino',
+
+      'https://beta.scrooge.casino',
+      'https://betapoker.scrooge.casino',
+      'https://betaslot.scrooge.casino',
+      'https://betablackjack.scrooge.casino',
+      'https://betaadmin.scrooge.casino',
+      'https://betamarket.scrooge.casino',
+      'https://betaroulette.scrooge.casino',
+    ],
+    credentials: true,
+  })
+);
 const server = createServer(app);
+// set security HTTP headers
+app.use(helmet());
 const io = new Server(server, {});
 socketConnection(io);
+app.use((req, _, next) => {
+  logger.info(`HEADERS ${req.headers} `);
+  next();
+});
 
 passport.use("jwt", jwtStrategy);
 
@@ -403,6 +442,20 @@ app.post("/createTable", auth(), async (req, res) => {
       valid = false;
     }
 
+    // const limit = await checkLimits(
+    //   _id,
+    //   gameMode,
+    //   parseFloat(sitInAmount),
+    //   req.user
+    // );
+
+    // console.log("limits ===>", limit);
+
+    // if (!limit?.success) {
+    //   res.status(403).send({ ...err, message: limit.message });
+    //   return;
+    // }
+
     if (!valid) {
       // console.log({err},"gameMode",gameMode);
       return res.status(403).send({ ...err, message: "Invalid data" });
@@ -535,30 +588,71 @@ app.get("/check-auth", auth(), async (req, res) => {
 app.post("/refillWallet", auth(), async (req, res) => {
   try {
     const user = req.user;
-    let { tableId, amount } = req.body;
-
+    let { tableId, amount,mode } = req.body;
+    amount = parseInt(amount);
+    const room =await roomModel.findOne({_id:tableId})
+    if(!mode){
+      return res.status(403).send({ msg: "Please select game mode!" });
+    }
     if (!tableId || !amount) {
       return res.status(403).send({ msg: "Invalid data" });
     }
-
-    amount = parseInt(amount);
-
-    const room = await roomModel.findOne({
-      _id: tableId,
-    });
-
+    if (amount < 5) {
+      return res.status(403).send({ msg: "Minimum amount to enter is 5." });
+    }  
+    if (amount > user?.wallet && mode ==='token') {
+      return res
+        .status(403)
+        .send({ msg: "You don't have enough balance in your wallet" });
+    }
+    if (amount > user?.goldCoin && mode ==='goldCoin') {
+      return res
+        .status(403)
+        .send({ msg: "You don't have enough gold Coins in your wallet" });
+    }
     if (
-      room?.gameMode.toString().toLowerCase() === "goldcoin" &&
+      room?.gameMode?.toString()?.toLowerCase() === "goldCoin" &&
       user?.goldCoin < amount
     ) {
       return res.status(403).send({ msg: "You don't have enough gold coin" });
     }
+    if (
+      room?.gameMode?.toString()?.toLowerCase() === "token" &&
+      user?.wallet < amount
+    ) {
+      return res.status(403).send({ msg: "You don't have enough wallet" });
+    }
+
+    let player = room.players.find(
+      (el) => el.id.toString() === (user._id || user.id).toString()
+    );
+
+    let totalHands = 0;
+    player.hands.forEach((el) => {
+      if (el.action === "game-lose") {
+        totalHands += el.amount;
+      }
+    });
 
     if (amount > user.wallet) {
       return res
         .status(403)
         .send({ msg: "You don't have enough balance in your wallet" });
     }
+
+    // const limit = await checkLimits(
+    //   user._id || user.id,
+    //   room?.gameMode,
+    //   parseFloat(amount) + player?.wallet + totalHands,
+    //   user
+    // );
+
+    // console.log("limits ===>", limit);
+
+    // if (!limit?.success) {
+    //   res.status(403).send({ msg: limit.message });
+    //   return;
+    // }
 
     await roomModel.updateOne(
       {
