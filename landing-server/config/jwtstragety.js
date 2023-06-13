@@ -1,9 +1,11 @@
 import { Strategy as JwtStrategy, ExtractJwt } from 'passport-jwt';
 import tokenTypes from './tokens.js';
-import User from '../models/user.model.js';
+import dotenv from "dotenv";
 
+import User from '../models/user.model.js';
+dotenv.config();
 const jwtOptions = {
-  secretOrKey: 'thisisasamplesecret',
+  secretOrKey: process.env.JWT_SECRET,
   jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
 };
 
