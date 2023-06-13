@@ -2,6 +2,7 @@ import express from "express";
 import { createServer } from "http";
 import dotenv from "dotenv";
 import cors from "cors";
+import helmet from 'helmet';
 import { Server } from "socket.io";
 import socketConnection from "./socketConnection/index.js";
 import mongoConnect from "./config/dbConnection.js";
@@ -17,6 +18,7 @@ import Token from "./landing-server/models/Token.model.js";
 import Message from "./modals/messageModal.js";
 import Notification from "./modals/NotificationModal.js";
 import { log } from "console";
+import logger from "./config/logger.js";
 
 const convertMongoId = (id) => mongoose.Types.ObjectId(id);
 
@@ -79,8 +81,14 @@ app.use(
   })
 );
 const server = createServer(app);
+// set security HTTP headers
+app.use(helmet());
 const io = new Server(server, {});
 socketConnection(io);
+app.use((req, _, next) => {
+  logger.info(`HEADERS ${req.headers} `);
+  next();
+});
 
 passport.use("jwt", jwtStrategy);
 
