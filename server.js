@@ -82,7 +82,18 @@ app.use(
 );
 const server = createServer(app);
 // set security HTTP headers
-app.use(helmet());
+app.use(
+  helmet({
+    frameguard: {
+      action: 'sameorigin'
+    },
+    hsts: {
+      maxAge: 31536000,
+      includeSubDomains: true,
+      preload: true
+    }
+  })
+);
 const io = new Server(server, {});
 socketConnection(io);
 app.use((req, _, next) => {
