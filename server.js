@@ -4,6 +4,8 @@ import dotenv from "dotenv";
 import cors from "cors";
 import helmet from 'helmet';
 import { Server } from "socket.io";
+import cookieParser from 'cookie-parser';
+
 import socketConnection from "./socketConnection/index.js";
 import mongoConnect from "./config/dbConnection.js";
 import roomModel from "./modals/roomModal.js";
@@ -42,6 +44,8 @@ const corsOptions = {
 };
 
 app.use(express.json());
+app.use(cookieParser());
+
 app.use(
   express.urlencoded({
     extended: false,
