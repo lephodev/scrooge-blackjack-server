@@ -2,6 +2,7 @@ import passport from "passport";
 import httpStatus from "http-status";
 import ApiError from "../utils/ApiError.js";
 import { roleRights } from "../config/roles.js";
+import { decryptPass } from "../utils/decrypt.js";
 
 const verifyCallback =
   (req, resolve, reject, requiredRights) => async (err, user, info) => {
@@ -28,6 +29,9 @@ const verifyCallback =
 const auth =
   (...requiredRights) =>
   async (req, res, next) => {
+    let decryptedToken = decryptPass(req.cookies['token']);
+req.headers.authEncrypted = req.headers.authorization;
+req.headers.authorization=`Bearer ${decryptedToken}`
     return new Promise((resolve, reject) => {
       passport.authenticate(
         "jwt",
