@@ -1300,7 +1300,14 @@ export const finishHandApiCall = async (room) => {
   }
 };
 
-const userTotalWinAmount = (coinsBeforeJoin, hands, userId, roomId, wallet,usersData) => {
+const userTotalWinAmount = (
+  coinsBeforeJoin,
+  hands,
+  userId,
+  roomId,
+  wallet,
+  usersData
+) => {
   // Wallet balance which user comes with to play the game
   console.log("coinsBeforeJoin ====> " + coinsBeforeJoin);
   let userBalanceNow = wallet ? Number(wallet) : coinsBeforeJoin;
@@ -1324,18 +1331,20 @@ const userTotalWinAmount = (coinsBeforeJoin, hands, userId, roomId, wallet,users
       updatedGoldCoin,
     } = elHand;
 
-    console.log("usersData ===========>", usersData)
-
+    console.log("usersData ===========>", usersData);
 
     transactions.push({
-      userId:usersData,
+      userId: usersData,
       roomId,
       amount:
         action === "game-lose" || action === "game-insurance"
           ? -amount
           : amount,
       transactionDetails: {},
-      updatedWallet: currentWallet,
+      updatedWallet:
+        action === "game-lose" || action === "game-insurance"
+          ? currentWallet
+          : currentWallet + amount,
       transactionType: "blackjack",
       prevWallet: previousWallet,
       prevTicket: previousTickets,
@@ -1444,14 +1453,14 @@ export const leaveApiCall = async (room, userId) => {
         )
           ? true
           : false,
-        userId:{
-          _id:user._id,
-          username : user.username,
-          email:user.email,
-          firstName:user.firstName,
-          lastName:user.lastName,
-          profile:user.profile
-        }
+        userId: {
+          _id: user._id,
+          username: user.username,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          profile: user.profile,
+        },
       });
     } else {
       // allUsers.forEach((item) => {
@@ -1592,7 +1601,7 @@ export const leaveApiCall = async (room, userId) => {
       if (room?.gameMode !== "goldCoin") {
         updationObject = {
           wallet: elUser?.wallet ? elUser?.wallet : 0,
-          ticket: totalTicketsWin,
+          // ticket: totalTicketsWin,
         };
       } else {
         updationObject = {
