@@ -36,36 +36,67 @@ const socketConnection = (io) => {
   io.typingPlayers = {};
   const rooms = [];
   io.on("connection", (socket) => {
+
+    console.log("socket.user ==>", socket.user);
+
     socket.on("checkTable", async (data) => {
+      data = {
+        ...data,
+        userId: socket.user.userId
+      }
       await checkRoom(data, socket, io);
     });
 
     // user bet
     socket.on("bet", async (data) => {
+      data = {
+        ...data,
+        userId: socket.user.userId
+      }
       await bet(io, socket, data);
     });
 
     // user bet with slider
     socket.on("makeSliderBet", async (data) => {
+      data = {
+        ...data,
+        userId: socket.user.userId
+      }
       await makeSliderBet(io, socket, data);
     });
 
     // clear user bet
     socket.on("clearbet", async (data) => {
+      data = {
+        ...data,
+        userId: socket.user.userId
+      }
       await clearBet(io, socket, data);
     });
 
     // reconnect to server
     socket.on("join", async (data) => {
+      data = {
+        ...data,
+        userId: socket.user.userId
+      }
       await rejoinGame(io, socket, data);
     });
 
     socket.on("confirmBet", async (data) => {
+      data = {
+        ...data,
+        userId: socket.user.userId
+      }
       await confirmBet(io, socket, data);
     });
 
     // player action socket
     socket.on("hit", async (data) => {
+      data = {
+        ...data,
+        userId: socket.user.userId
+      }
       process.nextTick(async () => {
         const p = await hitAction(io, socket, data);
         io.in(data.tableId).emit("action", {
@@ -82,6 +113,10 @@ const socketConnection = (io) => {
     });
 
     socket.on("stand", async (data) => {
+      data = {
+        ...data,
+        userId: socket.user.userId
+      }
       await standAction(io, socket, data);
       io.in(data.tableId).emit("action", {
         type: "stand",
@@ -89,6 +124,10 @@ const socketConnection = (io) => {
     });
 
     socket.on("double", async (data) => {
+      data = {
+        ...data,
+        userId: socket.user.userId
+      }
       const p = await doubleAction(io, socket, data);
       io.in(data.tableId).emit("action", {
         type: "doubleDown",
@@ -103,6 +142,10 @@ const socketConnection = (io) => {
     });
 
     socket.on("split", async (data) => {
+      data = {
+        ...data,
+        userId: socket.user.userId
+      }
       await splitAction(io, socket, data);
       io.in(data.tableId).emit("action", {
         type: "split",
@@ -111,6 +154,10 @@ const socketConnection = (io) => {
 
     socket.on("surrender", async (data) => {
       console.log("surrender executed", data);
+      data = {
+        ...data,
+        userId: socket.user.userId
+      }
       await surrender(io, socket, data);
       io.in(data.tableId).emit("action", {
         type: "surrender",
@@ -118,34 +165,62 @@ const socketConnection = (io) => {
     });
 
     socket.on("invPlayers", async (data) => {
+      data = {
+        ...data,
+        userId: socket.user.userId
+      }
       await InvitePlayers(io, socket, data);
     });
 
     // exit room
     socket.on("exitRoom", async (data) => {
+      data = {
+        ...data,
+        userId: socket.user.userId
+      }
       await exitRoom(io, socket, data);
     });
 
     // add more coins
     socket.on("addCoins", async (data) => {
+      data = {
+        ...data,
+        userId: socket.user.userId
+      }
       await addBuyCoins(io, socket, data);
     });
 
     // chat in game
     socket.on("chatMessage", async (data) => {
+      data = {
+        ...data,
+        userId: socket.user.userId
+      }
       io.in(data.tableId.toString()).emit("newMessage", data);
       await updateChat(io, socket, data);
     });
 
     socket.on("updateChatIsRead", async (data) => {
+      data = {
+        ...data,
+        userId: socket.user.userId
+      }
       await updateSeenBy(io, socket, data);
     });
 
     socket.on("typingOnChat", async (data) => {
+      data = {
+        ...data,
+        userId: socket.user.userId
+      }
       await typingonChat(io, socket, data);
     });
 
     socket.on("insurance", async (data) => {
+      data = {
+        ...data,
+        userId: socket.user.userId
+      }
       console.log("insurance socket emitted");
       await insuranceTaken(io, socket, data);
       io.in(data.tableId).emit("action", {
@@ -154,10 +229,18 @@ const socketConnection = (io) => {
     });
 
     socket.on("doInsure", async (data) => {
+      data = {
+        ...data,
+        userId: socket.user.userId
+      }
       await doInsurance(io, socket, data);
     });
 
     socket.on("denyInsurance", async (data) => {
+      data = {
+        ...data,
+        userId: socket.user.userId
+      }
       await denyInsurance(io, socket, data);
     });
 
