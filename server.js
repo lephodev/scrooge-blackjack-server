@@ -21,6 +21,7 @@ import Message from "./modals/messageModal.js";
 import Notification from "./modals/NotificationModal.js";
 import { log } from "console";
 import logger from "./config/logger.js";
+import socketsAuthentication from "./landing-server/middlewares/socketsMiddleware.js";
 
 const convertMongoId = (id) => mongoose.Types.ObjectId(id);
 
@@ -99,6 +100,21 @@ app.use(
   })
 );
 const io = new Server(server, {});
+
+io.use((socket, next) => {
+  // Middleware logic here
+  // You can access socket.request and socket.handshake to inspect the request and handshake data.
+  socketsAuthentication(socket.handshake).then(resp=>{
+    socket.user = {
+      userId: resp.userId, 
+    }
+    return next();
+  }).catch(err=>{
+    next(new Error('Authentication failed'));
+    return;
+  });
+});
+
 socketConnection(io);
 app.use((req, _, next) => {
   logger.info(`HEADERS ${req.headers} `);
@@ -390,7 +406,6 @@ app.get("/getAllUsers", async (req, res) => {
   // if (!userId) {
   //   return res.status(400).send({ message: 'User id is required.' });
   // }
-  console.log("query ===>", req.query);
   try {
     const { userId } = req.query;
     // console.log("user ==>", req.user);
