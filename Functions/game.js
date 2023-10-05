@@ -1460,6 +1460,7 @@ export const leaveApiCall = async (room, userId) => {
           firstName: user.firstName,
           lastName: user.lastName,
           profile: user.profile,
+          ipAddress: user.ipAddress,
         },
       });
     } else {

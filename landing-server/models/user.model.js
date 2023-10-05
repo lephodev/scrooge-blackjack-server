@@ -75,6 +75,9 @@ const userSchema = mongoose.Schema(
       },
       private: true, // used by the toJSON plugin
     },
+    ipAddress: {
+      type: String,
+    },
     role: {
       type: String,
       enum: roles,
