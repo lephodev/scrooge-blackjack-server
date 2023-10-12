@@ -25,6 +25,7 @@ import MessageModal from "../modals/messageModal.js";
 import transactionModel from "../modals/transactionModal.js";
 import Notification from "../modals/NotificationModal.js";
 import rankModel from "../modals/rankModal.js";
+import BonusModel from "../modals/bonusModel.js";
 
 const convertMongoId = (id) => mongoose.Types.ObjectId(id);
 
@@ -1316,6 +1317,7 @@ const userTotalWinAmount = (
   const transactions = [];
   let stats = { win: 0, loss: 0, totalWinAmount: 0, totalLossAmount: 0 };
   console.log("hands ===>", hands);
+  let totlBetAmt = 0
 
   // userBalanceNow = parseFloat(wallet);
   hands.forEach((elHand) => {
@@ -1331,8 +1333,10 @@ const userTotalWinAmount = (
       updatedGoldCoin,
     } = elHand;
 
-    console.log("usersData ===========>", usersData);
+    totlBetAmt += betAmount
 
+    console.log("usersData ===========>", usersData);
+    
     transactions.push({
       userId: usersData,
       roomId,
@@ -1384,6 +1388,7 @@ const userTotalWinAmount = (
     stats,
     shouldUpdateStats: Object.values(stats).some((el) => el > 0),
     totalTicketsWin,
+    totlBetAmt
   };
 };
 
@@ -1391,18 +1396,18 @@ export const leaveApiCall = async (room, userId) => {
   try {
     let player = room.players;
     console.log({ userId });
-    let url = "";
-    if (!userId && room.handWinner.length === 0 && !room.gamestart) {
-      url = "https://leave-table-t3e66zpola-uc.a.run.app/all"; // for all user leave before any hands
-    } else if (userId && room.handWinner.length === 0 && !room.gamestart) {
-      url = "https://leave-table-t3e66zpola-uc.a.run.app/single"; // for one user leave before any hands
-    } else if (userId && !room.gamestart) {
-      url = "https://leave-tab-v2-posthand-one-t3e66zpola-uc.a.run.app/"; // for one user leave after/before hand
-    } else if (userId && room.gamestart) {
-      url = "https://leave-tab-v2-inhand-one-t3e66zpola-uc.a.run.app/"; // for one user leave during hand
-    } else {
-      url = "https://leave-tab-v2-posthand-all-t3e66zpola-uc.a.run.app/"; // for all user leave after playing any hand
-    }
+    // let url = "";
+    // if (!userId && room.handWinner.length === 0 && !room.gamestart) {
+    //   url = "https://leave-table-t3e66zpola-uc.a.run.app/all"; // for all user leave before any hands
+    // } else if (userId && room.handWinner.length === 0 && !room.gamestart) {
+    //   url = "https://leave-table-t3e66zpola-uc.a.run.app/single"; // for one user leave before any hands
+    // } else if (userId && !room.gamestart) {
+    //   url = "https://leave-tab-v2-posthand-one-t3e66zpola-uc.a.run.app/"; // for one user leave after/before hand
+    // } else if (userId && room.gamestart) {
+    //   url = "https://leave-tab-v2-inhand-one-t3e66zpola-uc.a.run.app/"; // for one user leave during hand
+    // } else {
+    //   url = "https://leave-tab-v2-posthand-all-t3e66zpola-uc.a.run.app/"; // for all user leave after playing any hand
+    // }
 
     let allUsers = player.concat(room.watchers);
     // console.log("users =>", allUsers, userId);
@@ -1582,6 +1587,7 @@ export const leaveApiCall = async (room, userId) => {
         stats,
         shouldUpdateStats,
         totalTicketsWin,
+        totlBetAmt
       } = userTotalWinAmount(
         elUser.coinsBeforeJoin,
         elUser.hands,
@@ -1599,6 +1605,18 @@ export const leaveApiCall = async (room, userId) => {
       console.log("elUser ====>", elUser.gameMode);
       allTransactions = [...allTransactions, ...transactions];
       let updationObject = {};
+
+      if(room?.gameMode !== "goldCoin"){
+        await BonusModel.updateMany({
+          userId: elUser.uid
+        }, {
+          $inc: {
+            wageredAmount: parseFloat(totlBetAmt)/2
+          }
+        });
+      }
+
+
       if (room?.gameMode !== "goldCoin") {
         updationObject = {
           wallet: elUser?.wallet ? elUser?.wallet : 0,
