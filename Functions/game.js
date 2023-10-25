@@ -1351,16 +1351,18 @@ const userTotalWinAmount = async (
           totlBetAmt += mnthlyBetAmt
           user.monthlyClaimBonus -= restAmt;
         }else if(user.monthlyClaimBonus > 0){
-          mnthlyPercntage = (user.monthlyClaimBonus * 100) / betAmount;
-          mnthlyBetAmt = user.monthlyClaimBonus;
+          let mnthlyPercntage = (user.monthlyClaimBonus * 100) / betAmount;
+          let mnthlyBetAmt = user.monthlyClaimBonus;
           user.monthlyClaimBonus = 0;
           totlBetAmt += mnthlyBetAmt
         }
         
   
         if(action === 'game-win'){
-          const winAmtForMonthly = (mnthlyPercntage/100) * action.amount;
+          const winAmtForMonthly = (mnthlyPercntage/100) * betAmount;
           user.monthlyClaimBonus += winAmtForMonthly;
+          user.nonWithdrawableAmt = user.dailySpinBonus + user.monthlyClaimBonus;
+        }else{
           user.nonWithdrawableAmt = user.dailySpinBonus + user.monthlyClaimBonus;
         }
       }else if(user.monthlyClaimBonus >= betAmount){
@@ -1369,7 +1371,7 @@ const userTotalWinAmount = async (
         totlBetAmt += mnthlyBetAmt
         user.monthlyClaimBonus -= betAmount;
         if(action === 'game-win'){
-          const winAmtForMonthly = (mnthlyPercntage/100) * action.amount;
+          const winAmtForMonthly = (mnthlyPercntage/100) * betAmount;
           user.monthlyClaimBonus += winAmtForMonthly;
           user.nonWithdrawableAmt = user.dailySpinBonus + user.monthlyClaimBonus;
         }else{
