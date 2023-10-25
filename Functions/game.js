@@ -1318,6 +1318,7 @@ const userTotalWinAmount = async (
   const transactions = [];
   let stats = { win: 0, loss: 0, totalWinAmount: 0, totalLossAmount: 0 };
   let totlBetAmt = 0
+  let totlDailySpinAmt = 0
 
   const user = await User.findOne({
     _id: usersData._id
@@ -1341,9 +1342,11 @@ const userTotalWinAmount = async (
     if(gameMode !== "goldCoin"){
       if(user.dailySpinBonus >= betAmount){
         user.dailySpinBonus -= betAmount
+        totlDailySpinAmt += betAmount;
         user.nonWithdrawableAmt = user.dailySpinBonus + user.monthlyClaimBonus;
       }else if(user.dailySpinBonus < betAmount && user.dailySpinBonus !== 0){
         const restAmt = betAmount - user.dailySpinBonus;
+        totlDailySpinAmt += user.dailySpinBonus;
         user.dailySpinBonus = 0;
         if(user.monthlyClaimBonus >= restAmt){
           mnthlyPercntage = (restAmt * 100) / betAmount;
@@ -1556,7 +1559,6 @@ const userTotalWinAmount = async (
   }
 
   
-
   console.log("userBalanceNow ==>", userBalanceNow);
   console.log("Status ==>", stats);
   return {
@@ -1565,7 +1567,8 @@ const userTotalWinAmount = async (
     stats,
     shouldUpdateStats: Object.values(stats).some((el) => el > 0),
     totalTicketsWin,
-    totlBetAmt
+    totlBetAmt,
+    totlDailySpinAmt
   };
 };
 
@@ -1764,7 +1767,8 @@ export const leaveApiCall = async (room, userId) => {
         stats,
         shouldUpdateStats,
         totalTicketsWin,
-        totlBetAmt
+        totlBetAmt,
+        totlDailySpinAmt
       } = await userTotalWinAmount(
         elUser.coinsBeforeJoin,
         elUser.hands,
@@ -1785,13 +1789,32 @@ export const leaveApiCall = async (room, userId) => {
       let updationObject = {};
 
       if(room?.gameMode !== "goldCoin"){
-        await BonusModel.updateMany({
-          userId: elUser.uid
-        }, {
-          $inc: {
-            wageredAmount: parseFloat(totlBetAmt)/2
-          }
-        });
+        if(totlBetAmt){
+          await BonusModel.updateMany({
+            userId: elUser.uid,
+            isExpired: false,
+            bonusExpirationTime: { $gte: new Date() },
+            bonusType: 'monthly'
+          }, {
+            $inc: {
+              wageredAmount: parseFloat(totlBetAmt)
+            }
+          });
+        }
+        
+        if(totlDailySpinAmt){
+          await BonusModel.updateMany({
+            userId: elUser.uid,
+            isExpired: false,
+            bonusExpirationTime: { $gte: new Date() },
+            bonusType: 'daily'
+          }, {
+            $inc: {
+              wageredAmount: parseFloat(totlDailySpinAmt)
+            }
+          });
+        }
+
       }
 
 
