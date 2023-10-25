@@ -1348,13 +1348,14 @@ const userTotalWinAmount = async (
         const restAmt = betAmount - user.dailySpinBonus;
         totlDailySpinAmt += user.dailySpinBonus;
         user.dailySpinBonus = 0;
+        let mnthlyPercntage = 0
         if(user.monthlyClaimBonus >= restAmt){
           mnthlyPercntage = (restAmt * 100) / betAmount;
           mnthlyBetAmt = restAmt;
           totlBetAmt += mnthlyBetAmt
           user.monthlyClaimBonus -= restAmt;
         }else if(user.monthlyClaimBonus > 0){
-          let mnthlyPercntage = (user.monthlyClaimBonus * 100) / betAmount;
+          mnthlyPercntage = (user.monthlyClaimBonus * 100) / betAmount;
           let mnthlyBetAmt = user.monthlyClaimBonus;
           user.monthlyClaimBonus = 0;
           totlBetAmt += mnthlyBetAmt
@@ -1801,7 +1802,7 @@ export const leaveApiCall = async (room, userId) => {
             }
           });
         }
-        
+
         if(totlDailySpinAmt){
           await BonusModel.updateMany({
             userId: elUser.uid,
