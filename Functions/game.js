@@ -1301,13 +1301,14 @@ export const finishHandApiCall = async (room) => {
   }
 };
 
-const userTotalWinAmount = (
+const userTotalWinAmount = async (
   coinsBeforeJoin,
   hands,
   userId,
   roomId,
   wallet,
-  usersData
+  usersData,
+  gameMode
 ) => {
   // Wallet balance which user comes with to play the game
   console.log("coinsBeforeJoin ====> " + coinsBeforeJoin);
@@ -1316,8 +1317,12 @@ const userTotalWinAmount = (
   let totalTicketsWin = 0;
   const transactions = [];
   let stats = { win: 0, loss: 0, totalWinAmount: 0, totalLossAmount: 0 };
-  console.log("hands ===>", hands);
   let totlBetAmt = 0
+  let totlDailySpinAmt = 0
+
+  const user = await User.findOne({
+    _id: usersData._id
+  });
 
   // userBalanceNow = parseFloat(wallet);
   hands.forEach((elHand) => {
@@ -1333,7 +1338,166 @@ const userTotalWinAmount = (
       updatedGoldCoin,
     } = elHand;
 
-    totlBetAmt += betAmount
+
+    if(gameMode !== "goldCoin"){
+      if(user.dailySpinBonus >= betAmount){
+        user.dailySpinBonus -= betAmount
+        totlDailySpinAmt += betAmount;
+        user.nonWithdrawableAmt = user.dailySpinBonus + user.monthlyClaimBonus;
+      }else if(user.dailySpinBonus < betAmount && user.dailySpinBonus !== 0){
+        const restAmt = betAmount - user.dailySpinBonus;
+        totlDailySpinAmt += user.dailySpinBonus;
+        user.dailySpinBonus = 0;
+        if(user.monthlyClaimBonus >= restAmt){
+          mnthlyPercntage = (restAmt * 100) / betAmount;
+          mnthlyBetAmt = restAmt;
+          totlBetAmt += mnthlyBetAmt
+          user.monthlyClaimBonus -= restAmt;
+        }else if(user.monthlyClaimBonus > 0){
+          let mnthlyPercntage = (user.monthlyClaimBonus * 100) / betAmount;
+          let mnthlyBetAmt = user.monthlyClaimBonus;
+          user.monthlyClaimBonus = 0;
+          totlBetAmt += mnthlyBetAmt
+        }
+        
+  
+        if(action === 'game-win'){
+          const winAmtForMonthly = (mnthlyPercntage/100) * betAmount;
+          user.monthlyClaimBonus += winAmtForMonthly;
+          user.nonWithdrawableAmt = user.dailySpinBonus + user.monthlyClaimBonus;
+        }else{
+          user.nonWithdrawableAmt = user.dailySpinBonus + user.monthlyClaimBonus;
+        }
+      }else if(user.monthlyClaimBonus >= betAmount){
+        const mnthlyPercntage = 100;
+        const mnthlyBetAmt = betAmount;
+        totlBetAmt += mnthlyBetAmt
+        user.monthlyClaimBonus -= betAmount;
+        if(action === 'game-win'){
+          const winAmtForMonthly = (mnthlyPercntage/100) * betAmount;
+          user.monthlyClaimBonus += winAmtForMonthly;
+          user.nonWithdrawableAmt = user.dailySpinBonus + user.monthlyClaimBonus;
+        }else{
+          user.nonWithdrawableAmt = user.dailySpinBonus + user.monthlyClaimBonus;
+        }
+        
+        // promises.push(
+        //   BonusModel.updateMany({
+        //     userId: user._id
+        //   }, {
+        //     $inc: {wageredAmount: mnthlyBetAmt}
+        //   })
+        // )
+      }else if(user.monthlyClaimBonus < betAmount && user.monthlyClaimBonus !== 0){
+        const mnthlyPercntage = (user.monthlyClaimBonus * 100) / betAmount;
+        const mnthlyBetAmt = user.monthlyClaimBonus;
+        totlBetAmt += mnthlyBetAmt
+        user.monthlyClaimBonus = 0;
+        if(action === 'game-win'){
+          const winAmtForMonthly = (mnthlyPercntage/100) * action.amount;
+          user.monthlyClaimBonus += winAmtForMonthly;
+          user.nonWithdrawableAmt = user.dailySpinBonus + user.monthlyClaimBonus;
+        }else{
+          user.nonWithdrawableAmt = user.dailySpinBonus + user.monthlyClaimBonus;
+        }
+        // promises.push(
+        //   BonusModel.updateMany({
+        //     userId: user._id
+        //   }, {
+        //     $inc: {wageredAmount: mnthlyBetAmt}
+        //   })
+        // )
+      }
+    }
+
+    // if(action.toLowerCase() === "bet"){
+    //   if(user.dailySpinBonus >= action.amount){
+    //     user.dailySpinBonus -= action.amount
+    //     // nonWithdrawableAmt -= action.amount;
+    //     user.lastBetFrom = {
+    //       betFrom: 'dailybonus',
+    //       value: action.amount
+    //     };
+    //     user.nonWithdrawableAmt = user.dailySpinBonus + user.monthlyClaimBonus;
+    //   }else if(user.dailySpinBonus < action.amount && user.dailySpinBonus !== 0){
+    //     // nonWithdrawableAmt -= user.dailySpinBonus;
+    //     const restAmt = action.amount - user.dailySpinBonus;
+    //     user.dailySpinBonus = 0;
+    //     let mnthlyPercntage = 0;
+    //     let mnthlyBetAmt = 0;
+    //     if(user.monthlyClaimBonus >= restAmt){
+    //       mnthlyPercntage = (restAmt * 100) / action.amount;
+    //       mnthlyBetAmt = restAmt;
+    //       user.monthlyClaimBonus -= restAmt
+    //     }else if(user.monthlyClaimBonus > 0){
+    //       mnthlyPercntage = (user.monthlyClaimBonus * 100) / action.amount;
+    //       mnthlyBetAmt = user.monthlyClaimBonus;
+    //       user.monthlyClaimBonus = 0;
+    //     }
+    //     if(mnthlyBetAmt){
+    //       user.lastBetFrom = {
+    //         betFrom: 'monthly',
+    //         percentage: mnthlyPercntage,
+    //         value: mnthlyBetAmt
+    //       };
+    //       promises.push(
+    //         BonusModel.updateMany({
+    //           userId: user._id
+    //         }, {
+    //           $inc: {wageredAmount: mnthlyBetAmt}
+    //         })
+    //       )
+    //     }else{
+    //       user.lastBetFrom = {
+    //         betFrom: 'dailybonus',
+    //         percentage: 100,
+    //         value: action.amount
+    //       };
+    //     }
+        
+    //     user.nonWithdrawableAmt = user.dailySpinBonus + user.monthlyClaimBonus;
+    //   }else if(user.monthlyClaimBonus >= action.amount){
+    //     const mnthlyPercntage = 100;
+    //     const mnthlyBetAmt = action.amount;
+    //     user.monthlyClaimBonus -= restAmt;
+    //     user.lastBetFrom = {
+    //       betFrom: 'monthly',
+    //       percentage: mnthlyPercntage,
+    //       value: mnthlyBetAmt
+    //     };
+    //     user.nonWithdrawableAmt = user.dailySpinBonus + user.monthlyClaimBonus;
+    //     promises.push(
+    //       BonusModel.updateMany({
+    //         userId: user._id
+    //       }, {
+    //         $inc: {wageredAmount: mnthlyBetAmt}
+    //       })
+    //     )
+    //   }else if(user.monthlyClaimBonus < action.amount && user.monthlyClaimBonus !== 0){
+    //     const mnthlyPercntage = (user.monthlyClaimBonus * 100) / action.amount;
+    //     const mnthlyBetAmt = user.monthlyClaimBonus;
+    //     user.monthlyClaimBonus = 0;
+    //     user.lastBetFrom = {
+    //       betFrom: 'monthly',
+    //       percentage: mnthlyPercntage,
+    //       value: mnthlyBetAmt
+    //     };
+    //     user.nonWithdrawableAmt = user.dailySpinBonus + user.monthlyClaimBonus;
+    //     promises.push(
+    //       BonusModel.updateMany({
+    //         userId: user._id
+    //       }, {
+    //         $inc: {wageredAmount: mnthlyBetAmt}
+    //       })
+    //     )
+    //   }
+    // }else{
+    //   if(user?.lastBetFrom?.betFrom === 'monthly'){
+    //     const winAmtForMonthly = (user.lastBetFrom/100) * action.amount;
+    //     user.monthlyClaimBonus += winAmtForMonthly;
+    //     user.nonWithdrawableAmt = user.dailySpinBonus + user.monthlyClaimBonus;
+    //   }
+    // }
 
     console.log("usersData ===========>", usersData);
     
@@ -1380,6 +1544,21 @@ const userTotalWinAmount = (
     }
     // console.log("userBalanceNow ==>", userBalanceNow, betAmount);
   });
+
+  console.log("gameMode ==>", gameMode);
+
+  if(gameMode !== "goldCoin"){
+    await User.findOneAndUpdate({
+      _id: user._id
+    }, {
+      monthlyClaimBonus: user.monthlyClaimBonus,
+      nonWithdrawableAmt: user.nonWithdrawableAmt,
+      dailySpinBonus: user.dailySpinBonus,
+      redeemableAmount: user.redeemableAmount
+    });
+  }
+
+  
   console.log("userBalanceNow ==>", userBalanceNow);
   console.log("Status ==>", stats);
   return {
@@ -1388,7 +1567,8 @@ const userTotalWinAmount = (
     stats,
     shouldUpdateStats: Object.values(stats).some((el) => el > 0),
     totalTicketsWin,
-    totlBetAmt
+    totlBetAmt,
+    totlDailySpinAmt
   };
 };
 
@@ -1587,14 +1767,16 @@ export const leaveApiCall = async (room, userId) => {
         stats,
         shouldUpdateStats,
         totalTicketsWin,
-        totlBetAmt
-      } = userTotalWinAmount(
+        totlBetAmt,
+        totlDailySpinAmt
+      } = await userTotalWinAmount(
         elUser.coinsBeforeJoin,
         elUser.hands,
         elUser.uid,
         room.tableId,
         elUser.wallet,
-        elUser?.userId
+        elUser?.userId,
+        room?.gameMode
       );
       console.log(
         "userBalanceNow ====>",
@@ -1607,13 +1789,32 @@ export const leaveApiCall = async (room, userId) => {
       let updationObject = {};
 
       if(room?.gameMode !== "goldCoin"){
-        await BonusModel.updateMany({
-          userId: elUser.uid
-        }, {
-          $inc: {
-            wageredAmount: parseFloat(totlBetAmt)/2
-          }
-        });
+        if(totlBetAmt){
+          await BonusModel.updateMany({
+            userId: elUser.uid,
+            isExpired: false,
+            bonusExpirationTime: { $gte: new Date() },
+            bonusType: 'monthly'
+          }, {
+            $inc: {
+              wageredAmount: parseFloat(totlBetAmt)
+            }
+          });
+        }
+        
+        if(totlDailySpinAmt){
+          await BonusModel.updateMany({
+            userId: elUser.uid,
+            isExpired: false,
+            bonusExpirationTime: { $gte: new Date() },
+            bonusType: 'daily'
+          }, {
+            $inc: {
+              wageredAmount: parseFloat(totlDailySpinAmt)
+            }
+          });
+        }
+
       }
 
 
