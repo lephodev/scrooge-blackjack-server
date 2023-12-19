@@ -2,9 +2,9 @@ import express from "express";
 import { createServer } from "http";
 import dotenv from "dotenv";
 import cors from "cors";
-import helmet from 'helmet';
+import helmet from "helmet";
 import { Server } from "socket.io";
-import cookieParser from 'cookie-parser';
+import cookieParser from "cookie-parser";
 
 import socketConnection from "./socketConnection/index.js";
 import mongoConnect from "./config/dbConnection.js";
@@ -21,6 +21,7 @@ import Message from "./modals/messageModal.js";
 import Notification from "./modals/NotificationModal.js";
 import { log } from "console";
 import logger from "./config/logger.js";
+import Basicauth from "./landing-server/middlewares/basicAuth.js";
 
 const convertMongoId = (id) => mongoose.Types.ObjectId(id);
 
@@ -55,31 +56,31 @@ app.use(
 app.use(
   cors({
     origin: [
-      'http://localhost:3000',
-      'http://localhost:3001',
-      'http://localhost:3004',
-      'https://scrooge.casino',
-      'https://poker.scrooge.casino',
-      'https://blackjack.scrooge.casino',
-      'https://slot.scrooge.casino',
-      'https://admin.scrooge.casino',
-      'https://market.scrooge.casino',
-      'https://roulette.scrooge.casino',
-      'https://dev.scrooge.casino',
-      'https://devpoker.scrooge.casino',
-      'https://devslot.scrooge.casino',
-      'https://devblackjack.scrooge.casino',
-      'https://devadmin.scrooge.casino',
-      'https://devmarket.scrooge.casino',
-      'https://devroulette.scrooge.casino',
+      "http://localhost:3000",
+      "http://localhost:3001",
+      "http://localhost:3004",
+      "https://scrooge.casino",
+      "https://poker.scrooge.casino",
+      "https://blackjack.scrooge.casino",
+      "https://slot.scrooge.casino",
+      "https://admin.scrooge.casino",
+      "https://market.scrooge.casino",
+      "https://roulette.scrooge.casino",
+      "https://dev.scrooge.casino",
+      "https://devpoker.scrooge.casino",
+      "https://devslot.scrooge.casino",
+      "https://devblackjack.scrooge.casino",
+      "https://devadmin.scrooge.casino",
+      "https://devmarket.scrooge.casino",
+      "https://devroulette.scrooge.casino",
 
-      'https://beta.scrooge.casino',
-      'https://betapoker.scrooge.casino',
-      'https://betaslot.scrooge.casino',
-      'https://betablackjack.scrooge.casino',
-      'https://betaadmin.scrooge.casino',
-      'https://betamarket.scrooge.casino',
-      'https://betaroulette.scrooge.casino',
+      "https://beta.scrooge.casino",
+      "https://betapoker.scrooge.casino",
+      "https://betaslot.scrooge.casino",
+      "https://betablackjack.scrooge.casino",
+      "https://betaadmin.scrooge.casino",
+      "https://betamarket.scrooge.casino",
+      "https://betaroulette.scrooge.casino",
     ],
     credentials: true,
   })
@@ -89,13 +90,13 @@ const server = createServer(app);
 app.use(
   helmet({
     frameguard: {
-      action: 'sameorigin'
+      action: "sameorigin",
     },
     hsts: {
       maxAge: 31536000,
       includeSubDomains: true,
-      preload: true
-    }
+      preload: true,
+    },
   })
 );
 const io = new Server(server, {});
@@ -352,7 +353,7 @@ app.get("/checkUserInGame/:userId", async (req, res) => {
   }
 });
 
-app.get("/getUserForInvite/:tableId", async (req, res) => {
+app.get("/getUserForInvite/:tableId", Basicauth, async (req, res) => {
   try {
     if (!req.params.tableId) {
       return res.status(400).send({ msg: "Table id not found." });
@@ -380,12 +381,12 @@ app.get("/getUserForInvite/:tableId", async (req, res) => {
   }
 });
 
-app.get("/getRunningGame", async (req, res) => {
+app.get("/getRunningGame", Basicauth, async (req, res) => {
   const blackjackRooms = await roomModel.find({ finish: false });
   res.status(200).send({ rooms: blackjackRooms });
 });
 
-app.get("/getAllUsers", async (req, res) => {
+app.get("/getAllUsers", Basicauth, async (req, res) => {
   // const { userId } = req.params;
   // if (!userId) {
   //   return res.status(400).send({ message: 'User id is required.' });
@@ -603,10 +604,10 @@ app.get("/check-auth", auth(), async (req, res) => {
 app.post("/refillWallet", auth(), async (req, res) => {
   try {
     const user = req.user;
-    let { tableId, amount,mode } = req.body;
+    let { tableId, amount, mode } = req.body;
     amount = parseInt(amount);
-    const room =await roomModel.findOne({_id:tableId})
-    if(!mode){
+    const room = await roomModel.findOne({ _id: tableId });
+    if (!mode) {
       return res.status(403).send({ msg: "Please select game mode!" });
     }
     if (!tableId || !amount) {
@@ -614,13 +615,13 @@ app.post("/refillWallet", auth(), async (req, res) => {
     }
     if (amount < 5) {
       return res.status(403).send({ msg: "Minimum amount to enter is 5." });
-    }  
-    if (amount > user?.wallet && mode ==='token') {
+    }
+    if (amount > user?.wallet && mode === "token") {
       return res
         .status(403)
         .send({ msg: "You don't have enough balance in your wallet" });
     }
-    if (amount > user?.goldCoin && mode ==='goldCoin') {
+    if (amount > user?.goldCoin && mode === "goldCoin") {
       return res
         .status(403)
         .send({ msg: "You don't have enough gold Coins in your wallet" });
