@@ -1343,6 +1343,8 @@ const userTotalWinAmount = async (
       updatedGoldCoin,
     } = elHand;
 
+    console.log("bet amount ==>", betAmount, user.dailySpinBonus)
+
     
 
     if(gameMode !== "goldCoin"){
@@ -1353,6 +1355,7 @@ const userTotalWinAmount = async (
           betFrom: "dailybonus",
           value: betAmount,
         };
+
         user.nonWithdrawableAmt =
           user.dailySpinBonus + user.monthlyClaimBonus;
         promises.push(
