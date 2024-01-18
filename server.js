@@ -22,6 +22,7 @@ import Notification from "./modals/NotificationModal.js";
 import { log } from "console";
 import logger from "./config/logger.js";
 import socketsAuthentication from "./landing-server/middlewares/socketsMiddleware.js";
+import Basicauth from "./landing-server/middlewares/basicAuth.js";
 
 const convertMongoId = (id) => mongoose.Types.ObjectId(id);
 
@@ -368,7 +369,7 @@ app.get("/checkUserInGame/:userId", async (req, res) => {
   }
 });
 
-app.get("/getUserForInvite/:tableId", async (req, res) => {
+app.get("/getUserForInvite/:tableId", Basicauth, async (req, res) => {
   try {
     if (!req.params.tableId) {
       return res.status(400).send({ msg: "Table id not found." });
@@ -396,12 +397,12 @@ app.get("/getUserForInvite/:tableId", async (req, res) => {
   }
 });
 
-app.get("/getRunningGame", async (req, res) => {
+app.get("/getRunningGame", Basicauth, async (req, res) => {
   const blackjackRooms = await roomModel.find({ finish: false });
   res.status(200).send({ rooms: blackjackRooms });
 });
 
-app.get("/getAllUsers", async (req, res) => {
+app.get("/getAllUsers", Basicauth, async (req, res) => {
   // const { userId } = req.params;
   // if (!userId) {
   //   return res.status(400).send({ message: 'User id is required.' });
@@ -438,7 +439,7 @@ app.get("/getAllUsers", async (req, res) => {
   }
 });
 
-app.post("/createTable", auth(), async (req, res) => {
+app.post("/createTable",Basicauth, auth(), async (req, res) => {
   try {
     const {
       gameName,
@@ -447,7 +448,7 @@ app.post("/createTable", auth(), async (req, res) => {
       invitedUsers,
       sitInAmount,
     } = req.body;
-    const { username, wallet, goldCoin, email, _id, avatar } = req.user;
+    const { username, wallet, goldCoin, email, _id, avatar, monthlyClaimBonus } = req.user;
     let valid = true;
     let err = {};
     const mimimumBet = 1;
@@ -464,6 +465,11 @@ app.post("/createTable", auth(), async (req, res) => {
     console.log("current", newWallet);
     if (parseFloat(sitInAmount) > newWallet) {
       err.sitInAmount = "Sit in amount cant be more then user wallet amount.";
+      valid = false;
+    }
+
+    if (parseFloat(sitInAmount) > (newWallet - monthlyClaimBonus) && gameMode !== "goldCoin") {
+      err.sitInAmount = "You can only play with One time Wager and Withdrawable amount";
       valid = false;
     }
 
@@ -600,7 +606,7 @@ app.post("/createTable", auth(), async (req, res) => {
   }
 });
 
-app.get("/check-auth", auth(), async (req, res) => {
+app.get("/check-auth", Basicauth, auth(), async (req, res) => {
   try {
     const token = req.headers.authorization?.split(" ")[1];
     const checkTokenExists = await Token.findOne({ token });
