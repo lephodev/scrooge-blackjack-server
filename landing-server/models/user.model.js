@@ -75,6 +75,9 @@ const userSchema = mongoose.Schema(
       },
       private: true, // used by the toJSON plugin
     },
+    ipAddress: {
+      type: String,
+    },
     role: {
       type: String,
       enum: roles,
@@ -132,6 +135,11 @@ const userSchema = mongoose.Schema(
       type: Number,
       default: 0,
     },
+    nonWithdrawableAmt: { type: Number, default: 0 },
+    dailySpinBonus:  { type: Number, default: 0 },
+    monthlyClaimBonus:  { type: Number, default: 0 },
+    redeemableAmount:  { type: Number, default: 0 },
+    lastBetFrom:   { type: Object, default: {} },
   },
   {
     timestamps: true,
