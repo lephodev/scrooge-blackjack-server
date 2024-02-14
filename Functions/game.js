@@ -2014,7 +2014,7 @@ export const checkRoom = async (data, socket, io) => {
       //   return;
       // }
 
-      if(sitAmount > (userData.wallet - userData.monthlyClaimBonus)){
+      if(sitAmount > (userData.wallet - userData.monthlyClaimBonus) && roomData?.gameMode !== "goldCoin"){
         return socket.emit("notEnoughtGoldCoin", {
           message: "You can ponly play with One Time Wager and Withdrawable amount",
         });
