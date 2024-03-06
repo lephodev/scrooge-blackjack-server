@@ -1551,7 +1551,7 @@ const userTotalWinAmount = async (
     // console.log("userBalanceNow ==>", userBalanceNow, betAmount);
   });
 
-  console.log("gameMode ==>", gameMode);
+  console.log("transactions 1==>",transactions);
 
   if(gameMode !== "goldCoin"){
     await User.findOneAndUpdate({
@@ -1565,9 +1565,6 @@ const userTotalWinAmount = async (
     await Promise.allSettled(promises);
   }
 
-  
-  console.log("userBalanceNow ==>", userBalanceNow);
-  console.log("Status ==>", stats);
   return {
     userBalanceNow,
     transactions,
