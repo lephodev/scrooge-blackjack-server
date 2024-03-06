@@ -27,7 +27,7 @@ import Notification from "../modals/NotificationModal.js";
 import rankModel from "../modals/rankModal.js";
 import BonusModel from "../modals/bonusModel.js";
 
-const convertMongoId = (id) => mongoose.Types.ObjectId(id);
+const convertMongoId = (id) => new mongoose.Types.ObjectId(id);
 
 const addNewuserToIo = (io, socket, userId, tableId) => {
   console.log("--- ADD NEW USER TO IO ----", { userId, tableId });
@@ -1551,7 +1551,7 @@ const userTotalWinAmount = async (
     // console.log("userBalanceNow ==>", userBalanceNow, betAmount);
   });
 
-  console.log("gameMode ==>", gameMode);
+  console.log("transactions 1==>",transactions);
 
   if(gameMode !== "goldCoin"){
     await User.findOneAndUpdate({
@@ -1565,9 +1565,6 @@ const userTotalWinAmount = async (
     await Promise.allSettled(promises);
   }
 
-  
-  console.log("userBalanceNow ==>", userBalanceNow);
-  console.log("Status ==>", stats);
   return {
     userBalanceNow,
     transactions,
@@ -1606,7 +1603,6 @@ export const leaveApiCall = async (room, userId) => {
     let users = [];
 
     if (userId) {
-      console.log("entered in if condition");
       const getUser = allUsers.find((el) =>
         el.id
           ? el.id.toString() === userId.toString()
@@ -1767,112 +1763,111 @@ export const leaveApiCall = async (room, userId) => {
     let statsPromise = [];
     console.log("payload users ===>", payload.users);
 
-    payload.users.forEach(async (elUser) => {
-      const {
-        userBalanceNow,
-        transactions,
-        stats,
-        shouldUpdateStats,
-        totalTicketsWin,
-        totlBetAmt,
-        totlDailySpinAmt
-      } = await userTotalWinAmount(
-        elUser.coinsBeforeJoin,
-        elUser.hands,
-        elUser.uid,
-        room.tableId,
-        elUser.wallet,
-        elUser?.userId,
-        room?.gameMode
-      );
-      console.log(
-        "userBalanceNow ====>",
-        userBalanceNow,
-        elUser.wallet,
-        typeof elUser.wallet
-      );
-      console.log("elUser ====>", elUser.gameMode);
-      allTransactions = [...allTransactions, ...transactions];
-      let updationObject = {};
-
-      if(room?.gameMode !== "goldCoin"){
-        if(totlBetAmt){
-          // await BonusModel.updateMany({
-          //   userId: elUser.uid,
-          //   isExpired: false,
-          //   bonusExpirationTime: { $gte: new Date() },
-          //   bonusType: 'monthly'
-          // }, {
-          //   $inc: {
-          //     wageredAmount: parseFloat(totlBetAmt)
-          //   }
-          // });
-        }
-
-        if(totlDailySpinAmt){
-          // await BonusModel.updateMany({
-          //   userId: elUser.uid,
-          //   isExpired: false,
-          //   bonusExpirationTime: { $gte: new Date() },
-          //   bonusType: 'daily'
-          // }, {
-          //   $inc: {
-          //     wageredAmount: parseFloat(totlDailySpinAmt)
-          //   }
-          // });
-        }
-
-      }
-
-
-      if (room?.gameMode !== "goldCoin") {
-        updationObject = {
-          wallet: elUser?.wallet ? elUser?.wallet : 0,
-          // ticket: totalTicketsWin,
-        };
-      } else {
-        updationObject = {
-          goldCoin: elUser?.wallet ? elUser?.wallet : 0,
-          // ticket: totalTicketsWin,
-        };
-      }
-      console.log("updationObject =====>", updationObject);
-      if (elUser)
-        userWinPromise.push(
-          await User.updateOne(
-            { _id: convertMongoId(elUser.uid) },
-            {
-              $inc: updationObject,
-            }
-          )
+    for await(const elUser of payload.users){
+      {
+        const {
+          userBalanceNow,
+          transactions,
+          stats,
+          shouldUpdateStats,
+          totalTicketsWin,
+          totlBetAmt,
+          totlDailySpinAmt
+        } = await userTotalWinAmount(
+          elUser.coinsBeforeJoin,
+          elUser.hands,
+          elUser.uid,
+          room.tableId,
+          elUser.wallet,
+          elUser?.userId,
+          room?.gameMode
         );
-      console.log("line 1443");
-      if (shouldUpdateStats) {
-        statsPromise.push(
-          await rankModel.updateOne(
-            {
-              userId: convertMongoId(elUser.uid),
-              gameName: "blackjack",
-            },
-            {
-              $inc: {
-                win: stats.win,
-                loss: stats.loss,
-                totalWinAmount: stats.totalWinAmount,
-                totalLossAmount: stats.totalLossAmount || 0,
+        console.log("transactions ====>", transactions);
+        allTransactions = [...allTransactions, ...transactions];
+        let updationObject = {};
+  
+        // if(room?.gameMode !== "goldCoin"){
+        //   if(totlBetAmt){
+        //     // await BonusModel.updateMany({
+        //     //   userId: elUser.uid,
+        //     //   isExpired: false,
+        //     //   bonusExpirationTime: { $gte: new Date() },
+        //     //   bonusType: 'monthly'
+        //     // }, {
+        //     //   $inc: {
+        //     //     wageredAmount: parseFloat(totlBetAmt)
+        //     //   }
+        //     // });
+        //   }
+  
+        //   if(totlDailySpinAmt){
+        //     // await BonusModel.updateMany({
+        //     //   userId: elUser.uid,
+        //     //   isExpired: false,
+        //     //   bonusExpirationTime: { $gte: new Date() },
+        //     //   bonusType: 'daily'
+        //     // }, {
+        //     //   $inc: {
+        //     //     wageredAmount: parseFloat(totlDailySpinAmt)
+        //     //   }
+        //     // });
+        //   }
+  
+        // }
+  
+  
+        if (room?.gameMode !== "goldCoin") {
+          updationObject = {
+            wallet: elUser?.wallet ? elUser?.wallet : 0,
+            // ticket: totalTicketsWin,
+          };
+        } else {
+          updationObject = {
+            goldCoin: elUser?.wallet ? elUser?.wallet : 0,
+            // ticket: totalTicketsWin,
+          };
+        }
+        console.log("updationObject =====>", !!elUser,updationObject);
+        if (elUser)
+          userWinPromise.push(
+            await User.updateOne(
+              { _id: convertMongoId(elUser.uid) },
+              {
+                $inc: updationObject,
+              }
+            )
+          );
+        console.log("line 1443");
+        if (shouldUpdateStats) {
+          statsPromise.push(
+            await rankModel.updateOne(
+              {
+                userId: convertMongoId(elUser.uid),
+                gameName: "blackjack",
               },
-            },
-            { upsert: true }
-          )
-        );
+              {
+                $inc: {
+                  win: stats.win,
+                  loss: stats.loss,
+                  totalWinAmount: stats.totalWinAmount,
+                  totalLossAmount: stats.totalLossAmount || 0,
+                },
+              },
+              { upsert: true }
+            )
+          );
+        }
       }
-    });
-    await Promise.allSettled([
+    }
+
+    // payload.users.forEach(async (elUser) => );
+    console.log("allTransactions ==>", allTransactions);
+    const sttledTrans = await Promise.allSettled([
       ...userWinPromise,
       transactionModel.insertMany(allTransactions),
       ...statsPromise,
     ]);
-    console.log("line no 1468");
+    console.log("line no 1468",sttledTrans);
     // }
 
     // const res = await axios.post(url, payload, {
