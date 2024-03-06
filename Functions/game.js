@@ -1763,106 +1763,104 @@ export const leaveApiCall = async (room, userId) => {
     let statsPromise = [];
     console.log("payload users ===>", payload.users);
 
-    payload.users.forEach(async (elUser) => {
-      const {
-        userBalanceNow,
-        transactions,
-        stats,
-        shouldUpdateStats,
-        totalTicketsWin,
-        totlBetAmt,
-        totlDailySpinAmt
-      } = await userTotalWinAmount(
-        elUser.coinsBeforeJoin,
-        elUser.hands,
-        elUser.uid,
-        room.tableId,
-        elUser.wallet,
-        elUser?.userId,
-        room?.gameMode
-      );
-      console.log(
-        "userBalanceNow ====>",
-        userBalanceNow,
-        elUser.wallet,
-        typeof elUser.wallet
-      );
-      console.log("elUser ====>", elUser.gameMode);
-      allTransactions = [...allTransactions, ...transactions];
-      let updationObject = {};
-
-      // if(room?.gameMode !== "goldCoin"){
-      //   if(totlBetAmt){
-      //     // await BonusModel.updateMany({
-      //     //   userId: elUser.uid,
-      //     //   isExpired: false,
-      //     //   bonusExpirationTime: { $gte: new Date() },
-      //     //   bonusType: 'monthly'
-      //     // }, {
-      //     //   $inc: {
-      //     //     wageredAmount: parseFloat(totlBetAmt)
-      //     //   }
-      //     // });
-      //   }
-
-      //   if(totlDailySpinAmt){
-      //     // await BonusModel.updateMany({
-      //     //   userId: elUser.uid,
-      //     //   isExpired: false,
-      //     //   bonusExpirationTime: { $gte: new Date() },
-      //     //   bonusType: 'daily'
-      //     // }, {
-      //     //   $inc: {
-      //     //     wageredAmount: parseFloat(totlDailySpinAmt)
-      //     //   }
-      //     // });
-      //   }
-
-      // }
-
-
-      if (room?.gameMode !== "goldCoin") {
-        updationObject = {
-          wallet: elUser?.wallet ? elUser?.wallet : 0,
-          // ticket: totalTicketsWin,
-        };
-      } else {
-        updationObject = {
-          goldCoin: elUser?.wallet ? elUser?.wallet : 0,
-          // ticket: totalTicketsWin,
-        };
-      }
-      console.log("updationObject =====>", !!elUser,updationObject);
-      if (elUser)
-        userWinPromise.push(
-          await User.updateOne(
-            { _id: convertMongoId(elUser.uid) },
-            {
-              $inc: updationObject,
-            }
-          )
+    for await(const elUser of payload.users){
+      {
+        const {
+          userBalanceNow,
+          transactions,
+          stats,
+          shouldUpdateStats,
+          totalTicketsWin,
+          totlBetAmt,
+          totlDailySpinAmt
+        } = await userTotalWinAmount(
+          elUser.coinsBeforeJoin,
+          elUser.hands,
+          elUser.uid,
+          room.tableId,
+          elUser.wallet,
+          elUser?.userId,
+          room?.gameMode
         );
-      console.log("line 1443");
-      if (shouldUpdateStats) {
-        statsPromise.push(
-          await rankModel.updateOne(
-            {
-              userId: convertMongoId(elUser.uid),
-              gameName: "blackjack",
-            },
-            {
-              $inc: {
-                win: stats.win,
-                loss: stats.loss,
-                totalWinAmount: stats.totalWinAmount,
-                totalLossAmount: stats.totalLossAmount || 0,
+        console.log("transactions ====>", transactions);
+        allTransactions = [...allTransactions, ...transactions];
+        let updationObject = {};
+  
+        // if(room?.gameMode !== "goldCoin"){
+        //   if(totlBetAmt){
+        //     // await BonusModel.updateMany({
+        //     //   userId: elUser.uid,
+        //     //   isExpired: false,
+        //     //   bonusExpirationTime: { $gte: new Date() },
+        //     //   bonusType: 'monthly'
+        //     // }, {
+        //     //   $inc: {
+        //     //     wageredAmount: parseFloat(totlBetAmt)
+        //     //   }
+        //     // });
+        //   }
+  
+        //   if(totlDailySpinAmt){
+        //     // await BonusModel.updateMany({
+        //     //   userId: elUser.uid,
+        //     //   isExpired: false,
+        //     //   bonusExpirationTime: { $gte: new Date() },
+        //     //   bonusType: 'daily'
+        //     // }, {
+        //     //   $inc: {
+        //     //     wageredAmount: parseFloat(totlDailySpinAmt)
+        //     //   }
+        //     // });
+        //   }
+  
+        // }
+  
+  
+        if (room?.gameMode !== "goldCoin") {
+          updationObject = {
+            wallet: elUser?.wallet ? elUser?.wallet : 0,
+            // ticket: totalTicketsWin,
+          };
+        } else {
+          updationObject = {
+            goldCoin: elUser?.wallet ? elUser?.wallet : 0,
+            // ticket: totalTicketsWin,
+          };
+        }
+        console.log("updationObject =====>", !!elUser,updationObject);
+        if (elUser)
+          userWinPromise.push(
+            await User.updateOne(
+              { _id: convertMongoId(elUser.uid) },
+              {
+                $inc: updationObject,
+              }
+            )
+          );
+        console.log("line 1443");
+        if (shouldUpdateStats) {
+          statsPromise.push(
+            await rankModel.updateOne(
+              {
+                userId: convertMongoId(elUser.uid),
+                gameName: "blackjack",
               },
-            },
-            { upsert: true }
-          )
-        );
+              {
+                $inc: {
+                  win: stats.win,
+                  loss: stats.loss,
+                  totalWinAmount: stats.totalWinAmount,
+                  totalLossAmount: stats.totalLossAmount || 0,
+                },
+              },
+              { upsert: true }
+            )
+          );
+        }
       }
-    });
+    }
+
+    // payload.users.forEach(async (elUser) => );
     console.log("allTransactions ==>", allTransactions);
     const sttledTrans = await Promise.allSettled([
       ...userWinPromise,
