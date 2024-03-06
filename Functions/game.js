@@ -27,7 +27,7 @@ import Notification from "../modals/NotificationModal.js";
 import rankModel from "../modals/rankModal.js";
 import BonusModel from "../modals/bonusModel.js";
 
-const convertMongoId = (id) => mongoose.Types.ObjectId(id);
+const convertMongoId = (id) => new mongoose.Types.ObjectId(id);
 
 const addNewuserToIo = (io, socket, userId, tableId) => {
   console.log("--- ADD NEW USER TO IO ----", { userId, tableId });
@@ -1606,7 +1606,6 @@ export const leaveApiCall = async (room, userId) => {
     let users = [];
 
     if (userId) {
-      console.log("entered in if condition");
       const getUser = allUsers.find((el) =>
         el.id
           ? el.id.toString() === userId.toString()
@@ -1795,34 +1794,34 @@ export const leaveApiCall = async (room, userId) => {
       allTransactions = [...allTransactions, ...transactions];
       let updationObject = {};
 
-      if(room?.gameMode !== "goldCoin"){
-        if(totlBetAmt){
-          // await BonusModel.updateMany({
-          //   userId: elUser.uid,
-          //   isExpired: false,
-          //   bonusExpirationTime: { $gte: new Date() },
-          //   bonusType: 'monthly'
-          // }, {
-          //   $inc: {
-          //     wageredAmount: parseFloat(totlBetAmt)
-          //   }
-          // });
-        }
+      // if(room?.gameMode !== "goldCoin"){
+      //   if(totlBetAmt){
+      //     // await BonusModel.updateMany({
+      //     //   userId: elUser.uid,
+      //     //   isExpired: false,
+      //     //   bonusExpirationTime: { $gte: new Date() },
+      //     //   bonusType: 'monthly'
+      //     // }, {
+      //     //   $inc: {
+      //     //     wageredAmount: parseFloat(totlBetAmt)
+      //     //   }
+      //     // });
+      //   }
 
-        if(totlDailySpinAmt){
-          // await BonusModel.updateMany({
-          //   userId: elUser.uid,
-          //   isExpired: false,
-          //   bonusExpirationTime: { $gte: new Date() },
-          //   bonusType: 'daily'
-          // }, {
-          //   $inc: {
-          //     wageredAmount: parseFloat(totlDailySpinAmt)
-          //   }
-          // });
-        }
+      //   if(totlDailySpinAmt){
+      //     // await BonusModel.updateMany({
+      //     //   userId: elUser.uid,
+      //     //   isExpired: false,
+      //     //   bonusExpirationTime: { $gte: new Date() },
+      //     //   bonusType: 'daily'
+      //     // }, {
+      //     //   $inc: {
+      //     //     wageredAmount: parseFloat(totlDailySpinAmt)
+      //     //   }
+      //     // });
+      //   }
 
-      }
+      // }
 
 
       if (room?.gameMode !== "goldCoin") {
@@ -1836,7 +1835,7 @@ export const leaveApiCall = async (room, userId) => {
           // ticket: totalTicketsWin,
         };
       }
-      console.log("updationObject =====>", updationObject);
+      console.log("updationObject =====>", !!elUser,updationObject);
       if (elUser)
         userWinPromise.push(
           await User.updateOne(
@@ -1867,12 +1866,13 @@ export const leaveApiCall = async (room, userId) => {
         );
       }
     });
-    await Promise.allSettled([
+    console.log("allTransactions ==>", allTransactions);
+    const sttledTrans = await Promise.allSettled([
       ...userWinPromise,
       transactionModel.insertMany(allTransactions),
       ...statsPromise,
     ]);
-    console.log("line no 1468");
+    console.log("line no 1468",sttledTrans);
     // }
 
     // const res = await axios.post(url, payload, {
