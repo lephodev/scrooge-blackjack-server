@@ -9,57 +9,46 @@ const DecryptCard = (cipher) => {
     return originalText;
   }
 };
-const RATE_LIMIT_WINDOW = 60 * 1000;
-const MAX_REQUESTS_PER_WINDOW = 3;
-const rateLimitStore = {};
-
 const Basicauth = (req, res, next) => {
-  const tokenHeaders = req.headers;
-  const tokenResponse = tokenHeaders?.authorization;
-
-  if (tokenResponse === undefined) {
-    let err = new Error("You are not authenticated!");
-    err.status = 401;
-    return res.status(401).send({ msg: "Acces denied" });
-  }
-
-  const tokenParts = tokenResponse.split(" ");
-  if (tokenParts.length !== 2 || tokenParts[0] !== "Bearer") {
-    let err = new Error("Invalid Token!");
-    err.status = 401;
-    return res.status(401).send({ msg: "Invalid token format" });
-  }
-
-  const clientToken = DecryptCard(tokenParts[1]);
-  const encodedPart = clientToken.split("/");
-  if (encodedPart[0] !== process.env.TOKEN_ENCRYPTION_STRING) {
-    let err = new Error("Invalid Token!");
-    err.status = 401;
-    return res.status(401).send({ msg: "Invalid token" });
-  }
-
-  if (!rateLimitStore[encodedPart[1]]) {
-    rateLimitStore[encodedPart[1]] = { count: 1, lastRequestTime: Date.now() };
-  } else {
-    const timeDifference =
-      Date.now() - rateLimitStore[encodedPart[1]].lastRequestTime;
-
-    if (timeDifference < RATE_LIMIT_WINDOW) {
-      rateLimitStore[encodedPart[1]].count += 1;
-      if (rateLimitStore[encodedPart[1]].count > MAX_REQUESTS_PER_WINDOW) {
-        return res
-          .status(429)
-          .json({ error: "Too many requests, please try again later." });
-      }
-    } else {
-      rateLimitStore[encodedPart[1]] = {
-        count: 1,
-        lastRequestTime: Date.now(),
-      };
+  try {
+    const authheader = req.headers.authorization;
+    if (!authheader) {
+      let err = new Error("You are not authenticated!");
+      res.setHeader("WWW-Authenticate", "Basic");
+      err.status = 401;
+      return res.status(401).send({ msg: "Acces denied" });
     }
-  }
-  rateLimitStore[encodedPart[1]].lastRequestTime = Date.now();
+    let authValue = authheader?.split(" ");
+    if (authValue.length < 2) {
+      let err = new Error("You are not authenticated!");
+      res.setHeader("WWW-Authenticate", "Basic");
+      err.status = 401;
+      return res.status(401).send({ msg: "Acces denied" });
+    }
+    const finalAuthHeader = DecryptCard(authValue[1]);
+    const auth = new Buffer.from(finalAuthHeader, "base64")
+      .toString()
+      .split(":");
+    const user = auth[0];
+    const pass = auth[1];
 
-  next();
+    const getPass = new Date().toISOString();
+    const newDt = new Date(getPass).getTime();
+
+    var difference = newDt - pass;
+    var daysDifference = Math.floor(difference / 1000);
+    if (user == "scr@@ze" && daysDifference < 10) {
+      // If Authorized user
+      next();
+    } else {
+      let err = new Error("You are not authenticated!");
+      res.setHeader("WWW-Authenticate", "Basic");
+      err.status = 401;
+      return res.status(401).send({ msg: "Access denied" });
+    }
+  } catch (error) {
+    console.log("error", error);
+  }
 };
+
 export default Basicauth;
