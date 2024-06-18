@@ -614,7 +614,7 @@ export const exitRoom = async (io, socket, data) => {
           });
 
           console.log("no of rooms ===>", noOfRooms);
-          if (noOfRooms > 2) {
+          if (noOfRooms > 4) {
             await roomModel.deleteOne({
               tableId,
             });
