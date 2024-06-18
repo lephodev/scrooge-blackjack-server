@@ -18,6 +18,7 @@ const socketsAuthentication = async (handshake)=>{
             }
         });
         const tokenForVerify = token?.split("token=")[1];
+        console.log("tokenForVerify ==>", tokenForVerify);
         let decryptedToken = decryptPass(tokenForVerify);
         const verify = await verifyJwt(decryptedToken);
         return { userId: verify?.sub, success: true };
